@@ -1,0 +1,31 @@
+[package]
+name = "valorant-app"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["yyt"]
+edition = "2021"
+
+# only supports `2015`, `2018`, `2021`, and `2024` editions.
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "valorant_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+# sysinfo https://docs.rs/sysinfo/latest/sysinfo/index.html
+# tauri-plugin-devtools https://crates.io/crates/tauri-plugin-devtools
+# tauri-plugin-log https://v2.tauri.org.cn/plugin/logging/#printing-logs-to-the-terminal
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-log = "2"
+sysinfo = "0.38.4"
+log = "0.4.29"
+windows = { version = "0.62.2", features = ["Win32_System_Threading", "Win32_Foundation",] }
