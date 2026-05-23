@@ -1,0 +1,339 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* ── Shared surface / error tokens (tech-blue default) ── */
+    --background: hsl(285 100% 99%);
+    --foreground: hsl(240 7% 11%);
+    --card: hsl(270 14% 93%);
+    --card-foreground: hsl(240 7% 11%);
+    --popover: hsl(264 14% 90%);
+    --popover-foreground: hsl(240 7% 11%);
+    --muted: hsl(225 23% 90%);
+    --muted-foreground: hsl(218 8% 28%);
+    --accent: hsl(270 14% 95%);
+    --accent-foreground: hsl(240 7% 11%);
+    --destructive: hsl(0 75% 42%);
+    --destructive-foreground: hsl(0 0% 100%);
+    --border: hsl(225 11% 79%);
+    --input: hsl(220 5% 47%);
+    --ring: hsl(210 79% 46%);
+
+    /* ── MD3 container tokens (coexistence period) ── */
+    --md-sys-color-surface: #FEFBFF;
+    --md-sys-color-surface-dim: #DDD9DF;
+    --md-sys-color-surface-bright: #FEFBFF;
+    --md-sys-color-surface-container-lowest: #FFFFFF;
+    --md-sys-color-surface-container-low: #F3F0F6;
+    --md-sys-color-surface-container: #EDEBF1;
+    --md-sys-color-surface-container-high: #E7E5EB;
+    --md-sys-color-surface-container-highest: #E2DFE5;
+    --md-sys-color-on-surface: #1B1B1F;
+    --md-sys-color-surface-variant: #DFE2EB;
+    --md-sys-color-on-surface-variant: #43474E;
+    --md-sys-color-outline: #73777F;
+    --md-sys-color-outline-variant: #C3C6CF;
+    --md-sys-color-error: #BA1A1A;
+    --md-sys-color-on-error: #FFFFFF;
+    --md-sys-color-error-container: #FFDAD6;
+    --md-sys-color-on-error-container: #410002;
+    --md-sys-color-primary: #1976D2;
+    --md-sys-color-on-primary: #FFFFFF;
+    --md-sys-color-primary-container: #D1E4FF;
+    --md-sys-color-on-primary-container: #001D36;
+    --md-sys-color-secondary: #535F70;
+    --md-sys-color-on-secondary: #FFFFFF;
+    --md-sys-color-secondary-container: #D7E3F7;
+    --md-sys-color-on-secondary-container: #101C2B;
+    --md-sys-color-tertiary: #6B5778;
+    --md-sys-color-on-tertiary: #FFFFFF;
+    --md-sys-color-tertiary-container: #F2DAFF;
+    --md-sys-color-on-tertiary-container: #251431;
+    --md-sys-color-inverse-surface: #303034;
+    --md-sys-color-inverse-on-surface: #F2F0F4;
+    --md-sys-color-inverse-primary: #A0CAFD;
+    --md-sys-color-shadow: #000000;
+    --md-sys-color-scrim: #000000;
+  }
+
+  /* ── 科技蓝 (default) ── */
+  [data-theme="tech-blue"] {
+    --primary: hsl(210 79% 46%);
+    --primary-foreground: hsl(0 0% 100%);
+    --primary-container: hsl(215 100% 91%);
+    --on-primary-container: hsl(208 100% 11%);
+    --secondary: hsl(215 15% 38%);
+    --secondary-foreground: hsl(0 0% 100%);
+    --secondary-container: hsl(218 67% 91%);
+    --on-secondary-container: hsl(213 46% 12%);
+    --tertiary: hsl(276 16% 41%);
+    --tertiary-foreground: hsl(0 0% 100%);
+    --tertiary-container: hsl(279 100% 93%);
+    --on-tertiary-container: hsl(275 42% 14%);
+    --ring: hsl(210 79% 46%);
+  }
+
+  /* ── 翠青 ── */
+  [data-theme="cuiqing"] {
+    --primary: hsl(151 61% 42%);
+    --primary-foreground: hsl(0 0% 100%);
+    --primary-container: hsl(145 73% 86%);
+    --on-primary-container: hsl(149 100% 6%);
+    --secondary: hsl(147 13% 35%);
+    --secondary-foreground: hsl(0 0% 100%);
+    --secondary-container: hsl(143 37% 86%);
+    --on-secondary-container: hsl(154 51% 8%);
+    --tertiary: hsl(199 30% 35%);
+    --tertiary-foreground: hsl(0 0% 100%);
+    --tertiary-container: hsl(200 88% 87%);
+    --on-tertiary-container: hsl(196 100% 8%);
+    --ring: hsl(151 61% 42%);
+  }
+
+  /* ── 鎏金 ── */
+  [data-theme="liujin"] {
+    --primary: hsl(46 65% 52%);
+    --primary-foreground: hsl(240 7% 11%);
+    --primary-container: hsl(46 100% 88%);
+    --on-primary-container: hsl(44 100% 9%);
+    --secondary: hsl(42 26% 33%);
+    --secondary-foreground: hsl(0 0% 100%);
+    --secondary-container: hsl(45 79% 81%);
+    --on-secondary-container: hsl(46 100% 7%);
+    --tertiary: hsl(140 30% 32%);
+    --tertiary-foreground: hsl(0 0% 100%);
+    --tertiary-container: hsl(131 71% 85%);
+    --on-tertiary-container: hsl(144 100% 6%);
+    --ring: hsl(46 65% 52%);
+  }
+
+  /* ── 胭脂 ── */
+  [data-theme="yanzhi"] {
+    --primary: hsl(351 54% 54%);
+    --primary-foreground: hsl(0 0% 100%);
+    --primary-container: hsl(351 100% 93%);
+    --on-primary-container: hsl(343 100% 13%);
+    --secondary: hsl(351 17% 38%);
+    --secondary-foreground: hsl(0 0% 100%);
+    --secondary-container: hsl(351 100% 93%);
+    --on-secondary-container: hsl(350 44% 11%);
+    --tertiary: hsl(38 46% 31%);
+    --tertiary-foreground: hsl(0 0% 100%);
+    --tertiary-container: hsl(38 100% 82%);
+    --on-tertiary-container: hsl(37 100% 8%);
+    --ring: hsl(351 54% 54%);
+  }
+
+  /* ── 莺儿 ── */
+  [data-theme="yinger"] {
+    --primary: hsl(85 60% 62%);
+    --primary-foreground: hsl(240 7% 11%);
+    --primary-container: hsl(80 81% 79%);
+    --on-primary-container: hsl(85 100% 9%);
+    --secondary: hsl(78 16% 34%);
+    --secondary-foreground: hsl(0 0% 100%);
+    --secondary-container: hsl(75 43% 84%);
+    --on-secondary-container: hsl(80 51% 8%);
+    --tertiary: hsl(165 31% 35%);
+    --tertiary-foreground: hsl(0 0% 100%);
+    --tertiary-container: hsl(161 94% 87%);
+    --on-tertiary-container: hsl(171 100% 6%);
+    --ring: hsl(85 60% 62%);
+  }
+
+  /* ── 浅苋菜紫 ── */
+  [data-theme="xiancaizi"] {
+    --primary: hsl(300 24% 80%);
+    --primary-foreground: hsl(240 7% 11%);
+    --primary-container: hsl(300 51% 92%);
+    --on-primary-container: hsl(300 36% 13%);
+    --secondary: hsl(304 7% 39%);
+    --secondary-foreground: hsl(0 0% 100%);
+    --secondary-container: hsl(312 48% 92%);
+    --on-secondary-container: hsl(294 16% 13%);
+    --tertiary: hsl(19 28% 37%);
+    --tertiary-foreground: hsl(0 0% 100%);
+    --tertiary-container: hsl(16 100% 90%);
+    --on-tertiary-container: hsl(19 67% 11%);
+    --ring: hsl(300 24% 80%);
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-container: var(--secondary-container);
+  --color-on-secondary-container: var(--on-secondary-container);
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-foreground: var(--tertiary-foreground);
+  --color-tertiary-container: var(--tertiary-container);
+  --color-on-tertiary-container: var(--on-tertiary-container);
+  --radius: var(--radius);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ── Base resets (migrated from global.css) ── */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+  }
+
+  #app {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* ── Organize page component classes (migrated from layout.css) ── */
+
+.file-group {
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: clamp(10px, 1.5vmin, 18px);
+  padding: clamp(12px, 2vmin, 20px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.file-group + .file-group {
+  margin-top: clamp(12px, 2.5vmin, 24px);
+}
+
+.file-group-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(140px, 28vmin, 200px), 1fr));
+  gap: clamp(4px, 1vmin, 8px);
+  min-height: 48px;
+}
+
+.file-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: clamp(6px, 1vmin, 10px);
+  padding: clamp(8px, 1.2vmin, 12px) clamp(8px, 1.5vmin, 14px);
+  border-radius: clamp(6px, 1vmin, 10px);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.2s, box-shadow 0.2s;
+  outline: none;
+  background: transparent;
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.file-item:hover {
+  background: var(--md-sys-color-surface-variant);
+  transform: scale(1.03);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.file-item:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -1px;
+}
+
+.file-item-icon {
+  width: clamp(22px, 4.5vmin, 30px);
+  height: clamp(22px, 4.5vmin, 30px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--md-sys-color-primary);
+  flex-shrink: 0;
+}
+
+.file-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.file-item-name {
+  font-size: clamp(11px, 1.6vmin, 13px);
+  color: var(--md-sys-color-on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- Drag & drop in organize --- */
+.file-item.long-press-active {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  background: var(--md-sys-color-surface-variant);
+  cursor: grabbing;
+  z-index: 10;
+}
+
+.file-group-items.drag-over {
+  background: var(--md-sys-color-primary-container);
+  border-radius: 6px;
+  outline: 2px dashed var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+/* --- Drag insert indicators --- */
+.file-item.drop-before {
+  border-left: 3px solid var(--md-sys-color-primary);
+  margin-left: 2px;
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
+}
+
+.file-item.drop-after {
+  border-right: 3px solid var(--md-sys-color-primary);
+  margin-right: 2px;
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+
+.file-item.drag-source {
+  opacity: 0.4;
+  pointer-events: none;
+}
