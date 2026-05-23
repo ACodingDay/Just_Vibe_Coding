@@ -27,11 +27,15 @@
 |--------|------|------|
 | Tauri v2 + Rust + Vanilla JS | Windows | ✅ 可用 |
 
-**核心功能：**
-- 🔍 自动检测游戏相关进程运行状态
-- ⚙️ 一键设置 CPU 亲和性（绑定到最后一个核心）
-- 📉 将后台进程优先级降至 Idle
-- 🎨 亮色 / 暗色主题切换
+### 🧹 [deskclean-tauri-app](./deskclean-tauri-app/)
+
+> 桌面文件可视化管理 & 整理助手
+
+基于 **Tauri 2 + React + TypeScript** 构建的 Windows 桌面应用，自动扫描桌面文件并进行智能分类展示，通过拖拽和抽屉分组实现可视化的桌面整理体验。
+
+| 技术栈 | 平台 | 状态 |
+|--------|------|------|
+| Tauri v2 + Rust + React + TypeScript + shadcn/ui | Windows | 🔨 开发中 |
 
 ---
 
@@ -44,9 +48,9 @@
 ```
 
 使用的工具：
-- 🤖 **AI 辅助**：Qoder / Cursor 等
+- 🤖 **AI 辅助**：Qoder / Cursor 等，感谢 DeepSeek 的大力支持。
 - 🦀 **后端**：Rust + Tauri（桌面端）
-- 🌐 **前端**：Vanilla JS / HTML / CSS，够用就好
+- 🌐 **前端**：Vanilla JS / React + TypeScript + shadcn/ui，看项目需要
 - 🪟 **平台**：主要面向 Windows
 
 ---
