@@ -1,44 +1,4 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Temp / cache directories
+%TEMP%
 
-# Node.js
-node_modules
-dist
-dist-ssr
-
-# Editor directories and files
-.vscode/
-.idea
-
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Rust / Cargo
-target/
-
-# Tauri
-src-tauri/target/
-src-tauri/gen/
-*.app
-*.dmg
-*.deb
-*.msi
-*.exe
-
-# 系统文件
-.DS_Store
-Thumbs.db
-
-# 环境变量
-.env
-.env.local
-*.local
+# This repo only contains cleanmywin-tauri-app

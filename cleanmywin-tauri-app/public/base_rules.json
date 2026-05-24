@@ -1,0 +1,442 @@
+[
+  {
+    "id": "user_temp",
+    "name": "用户临时文件",
+    "category": "SystemClean",
+    "description": "清理用户 Temp 目录下的临时文件",
+    "paths": [
+      "%USERPROFILE%\\AppData\\Local\\Temp"
+    ],
+    "patterns": [
+      "**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "DeleteFiles",
+    "clean_command": null
+  },
+  {
+    "id": "system_temp",
+    "name": "系统临时文件",
+    "category": "SystemClean",
+    "description": "清理 Windows Temp 目录下的系统临时文件",
+    "paths": [
+      "%windir%\\Temp"
+    ],
+    "patterns": [
+      "**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "DeleteFiles",
+    "clean_command": null
+  },
+  {
+    "id": "inet_cache",
+    "name": "Internet 缓存",
+    "category": "BrowserClean",
+    "description": "清理 IE/Edge 遗留的 INetCache 缓存",
+    "paths": [
+      "%USERPROFILE%\\AppData\\Local\\Microsoft\\Windows\\INetCache"
+    ],
+    "patterns": [
+      "**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "DeleteFiles",
+    "clean_command": null
+  },
+  {
+    "id": "browser_cache",
+    "name": "浏览器缓存",
+    "category": "BrowserClean",
+    "description": "清理 Chrome 和 Edge 浏览器的页面缓存",
+    "paths": [
+      "%USERPROFILE%\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Cache",
+      "%USERPROFILE%\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Cache"
+    ],
+    "patterns": [
+      "**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "DeleteFiles",
+    "clean_command": null
+  },
+  {
+    "id": "chrome_crdownload",
+    "name": "Chrome 未完成下载",
+    "category": "BrowserClean",
+    "description": "删除下载目录中的 .crdownload 残余文件",
+    "paths": [
+      "%USERPROFILE%\\Downloads"
+    ],
+    "patterns": [
+      "**/*.crdownload"
+    ],
+    "risk_level": "Medium",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "DeleteFiles",
+    "clean_command": null
+  },
+  {
+    "id": "recycle_bin",
+    "name": "回收站",
+    "category": "SystemClean",
+    "description": "清空回收站中的所有文件",
+    "paths": [],
+    "patterns": [],
+    "risk_level": "Medium",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "EmptyRecycleBin",
+    "clean_command": null
+  },
+  {
+    "id": "windows_update",
+    "name": "Windows 更新缓存",
+    "category": "SystemClean",
+    "description": "清理已下载的 Windows Update 缓存文件",
+    "paths": [
+      "%windir%\\SoftwareDistribution\\Download"
+    ],
+    "patterns": [
+      "**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "DeleteFiles",
+    "clean_command": null
+  },
+  {
+    "id": "nvidia_cache",
+    "name": "NVIDIA 缓存",
+    "category": "SystemClean",
+    "description": "清理 NVIDIA 驱动缓存和着色器缓存",
+    "paths": [
+      "%USERPROFILE%\\AppData\\Local\\NVIDIA Corporation\\NV_cache",
+      "%USERPROFILE%\\AppData\\Local\\NVIDIA\\DXCache",
+      "%USERPROFILE%\\AppData\\Local\\NVIDIA\\GLCache"
+    ],
+    "patterns": [
+      "**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "DeleteFiles",
+    "clean_command": null
+  },
+  {
+    "id": "dns_cache",
+    "name": "DNS 缓存",
+    "category": "SystemClean",
+    "description": "刷新系统 DNS 解析缓存",
+    "paths": [],
+    "patterns": [],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "RunCommand",
+    "clean_command": "ipconfig /flushdns"
+  },
+  {
+    "id": "thumbnail_cache",
+    "name": "缩略图缓存",
+    "category": "SystemClean",
+    "description": "删除 Explorer 缩略图数据库缓存",
+    "paths": [
+      "%USERPROFILE%\\AppData\\Local\\Microsoft\\Windows\\Explorer"
+    ],
+    "patterns": [
+      "thumbcache_*.db"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "DeleteFiles",
+    "clean_command": null
+  },
+  {
+    "id": "event_logs",
+    "name": "Windows 事件日志",
+    "category": "SystemClean",
+    "description": "清除所有 Windows 事件查看器日志",
+    "paths": [],
+    "patterns": [],
+    "risk_level": "Medium",
+    "default_enabled": false,
+    "is_interactive": false,
+    "clean_type": "RunCommand",
+    "clean_command": "for /f \"tokens=*\" %f in ('wevtutil el') do wevtutil cl \"%f\""
+  },
+  {
+    "id": "font_icon_cache",
+    "name": "字体/图标缓存",
+    "category": "SystemClean",
+    "description": "清理用户字体缓存和图标缓存数据库",
+    "paths": [
+      "%USERPROFILE%\\AppData\\Local\\Microsoft\\Windows\\Fonts",
+      "%USERPROFILE%\\AppData\\Local\\Microsoft\\Windows\\Explorer"
+    ],
+    "patterns": [
+      "*",
+      "iconcache_*.db"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "DeleteFiles",
+    "clean_command": null
+  },
+  {
+    "id": "hibernate_file",
+    "name": "休眠文件",
+    "category": "AdvancedClean",
+    "description": "关闭休眠模式并删除 hiberfil.sys（不可逆）",
+    "paths": [],
+    "patterns": [],
+    "risk_level": "High",
+    "default_enabled": false,
+    "is_interactive": true,
+    "clean_type": "RunCommand",
+    "clean_command": "powercfg /h off"
+  },
+  {
+    "id": "restore_points",
+    "name": "系统还原点",
+    "category": "AdvancedClean",
+    "description": "删除所有系统还原点（不可逆，无法回滚系统状态）",
+    "paths": [],
+    "patterns": [],
+    "risk_level": "High",
+    "default_enabled": false,
+    "is_interactive": true,
+    "clean_type": "RunCommand",
+    "clean_command": "vssadmin delete shadows /all /quiet"
+  },
+  {
+    "id": "dev_caches",
+    "name": "开发者缓存",
+    "category": "DevClean",
+    "description": "清理 npm/pnpm/pip/Cargo/Gradle/Maven 等开发工具缓存",
+    "paths": [
+      "%LOCALAPPDATA%\\npm-cache",
+      "%LOCALAPPDATA%\\pnpm-cache",
+      "%LOCALAPPDATA%\\Yarn\\Cache",
+      "%LOCALAPPDATA%\\pip\\cache",
+      "%USERPROFILE%\\.cargo\\registry\\cache",
+      "%USERPROFILE%\\.gradle\\caches",
+      "%USERPROFILE%\\.m2\\repository",
+      "%LOCALAPPDATA%\\Pub\\Cache",
+      "%USERPROFILE%\\.pub-cache"
+    ],
+    "patterns": [
+      "**/*"
+    ],
+    "risk_level": "Medium",
+    "default_enabled": false,
+    "is_interactive": true,
+    "clean_type": "DeleteFiles",
+    "clean_command": null
+  },
+  {
+    "id": "wechat_pic_cache",
+    "name": "微信图片缓存",
+    "category": "AppClean",
+    "description": "清理微信自动下载的图片缓存（Attachment和FileStorage/Cache目录）",
+    "paths": [
+      "%USERPROFILE%\\Documents\\WeChat Files"
+    ],
+    "patterns": [
+      "*/Attachment/**/*",
+      "*/FileStorage/Cache/**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "wechat_files",
+    "name": "微信文件",
+    "category": "AppClean",
+    "description": "清理微信聊天中的文件（谨慎，默认关闭）",
+    "paths": [
+      "%USERPROFILE%\\Documents\\WeChat Files"
+    ],
+    "patterns": [
+      "*/Files/**/*",
+      "*/FileStorage/File/**/*"
+    ],
+    "risk_level": "Medium",
+    "default_enabled": false,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "wechat_images",
+    "name": "微信图片",
+    "category": "AppClean",
+    "description": "清理微信聊天中接收的图片",
+    "paths": [
+      "%USERPROFILE%\\Documents\\WeChat Files"
+    ],
+    "patterns": [
+      "*/Image/Image/**/*",
+      "*/FileStorage/Image/**/*"
+    ],
+    "risk_level": "Medium",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "wechat_videos",
+    "name": "微信视频",
+    "category": "AppClean",
+    "description": "清理微信聊天中接收的视频",
+    "paths": [
+      "%USERPROFILE%\\Documents\\WeChat Files"
+    ],
+    "patterns": [
+      "*/Video/**/*",
+      "*/FileStorage/Video/**/*"
+    ],
+    "risk_level": "Medium",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "wechat_xwechat_temp",
+    "name": "微信4.x缓存(temp)",
+    "category": "AppClean",
+    "description": "清理微信4.x版本xwechat_files下各账号的temp缓存目录（全部可删）",
+    "paths": [
+      "%USERPROFILE%\\Documents\\xwechat_files"
+    ],
+    "patterns": [
+      "*/temp/**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "qqbrowser_cache",
+    "name": "QQ浏览器缓存",
+    "category": "BrowserClean",
+    "description": "清理QQ浏览器页面缓存和Shader缓存",
+    "paths": [
+      "%LOCALAPPDATA%\\Tencent\\QQBrowser\\User Data\\Default\\Cache",
+      "%LOCALAPPDATA%\\Tencent\\QQBrowser\\User Data\\ShaderCache"
+    ],
+    "patterns": [
+      "**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "DeleteFiles",
+    "clean_command": null
+  },
+  {
+    "id": "qq_nt_pic",
+    "name": "QQ9.x图片缓存(Pic)",
+    "category": "AppClean",
+    "description": "清理QQ9.x版本各账号nt_data下的Pic图片缓存",
+    "paths": [
+      "%USERPROFILE%\\Documents\\Tencent Files"
+    ],
+    "patterns": [
+      "*/nt_qq/nt_data/Pic/**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "wegame_cache",
+    "name": "WeGame缓存",
+    "category": "AppClean",
+    "description": "清理腾讯WeGame游戏平台缓存数据",
+    "paths": [
+      "%USERPROFILE%\\AppData\\Roaming\\Tencent\\WeGame"
+    ],
+    "patterns": [
+      "**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "xwechat_appdata",
+    "name": "微信AppData缓存",
+    "category": "AppClean",
+    "description": "清理微信AppData\\Roaming下xwechat缓存（高危：清理后需重新扫码登录）",
+    "paths": [
+      "%USERPROFILE%\\AppData\\Roaming\\Tencent\\xwechat"
+    ],
+    "patterns": [
+      "**/*"
+    ],
+    "risk_level": "High",
+    "default_enabled": false,
+    "is_interactive": true,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "wps_logs",
+    "name": "WPS日志",
+    "category": "AppClean",
+    "description": "清理WPS Office日志文件（office6\\log）",
+    "paths": [
+      "%USERPROFILE%\\AppData\\Roaming\\kingsoft\\office6\\log"
+    ],
+    "patterns": [
+      "**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "wetype_xlog",
+    "name": "微信输入法日志(xlog)",
+    "category": "AppClean",
+    "description": "清理微信输入法WeType的MM_*.xlog日志文件",
+    "paths": [
+      "%USERPROFILE%\\AppData\\LocalLow\\Tencent\\WeType"
+    ],
+    "patterns": [
+      "MM_*.xlog"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  }
+]

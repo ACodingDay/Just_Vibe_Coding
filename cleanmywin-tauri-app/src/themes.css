@@ -1,0 +1,284 @@
+/*
+ * CleanMyWin 主题系统
+ * 三基色 (ground / primary / accent) × 昼夜模式 (light / dark)
+ *
+ * --tone-ground  基色1: 底调 → 背景、卡片、侧栏、标题栏
+ * --tone-primary 基色2: 主色 → 按钮、激活态、链接
+ * --tone-accent  基色3: 强调 → 高亮、徽标、次要交互
+ */
+
+/* ================================================================
+ *  余烬暖 (Ember Warm)
+ *  白昼: #FBF6EF / #B8752F / #F2EBE0
+ *  暗夜: #1c1c1c / #c8843b / #242424
+ * ================================================================ */
+
+[data-theme="ember-warm"][data-mode="light"] {
+  --tone-ground: #FBF6EF;
+  --tone-primary: #B8752F;
+  --tone-accent: #F2EBE0;
+
+  --background: var(--tone-ground);
+  --foreground: oklch(0.28 0.02 60);
+  --card: oklch(0.99 0.006 60);
+  --card-foreground: oklch(0.28 0.02 60);
+  --popover: oklch(0.99 0.006 60);
+  --popover-foreground: oklch(0.28 0.02 60);
+  --primary: var(--tone-primary);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: var(--tone-accent);
+  --secondary-foreground: oklch(0.35 0.02 60);
+  --muted: oklch(0.96 0.008 60);
+  --muted-foreground: oklch(0.52 0.01 60);
+  --accent: var(--tone-accent);
+  --accent-foreground: oklch(0.30 0.03 60);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0 0 0 / 10%);
+  --input: oklch(0 0 0 / 12%);
+  --ring: var(--tone-primary);
+  --chart-1: var(--tone-primary);
+  --chart-2: oklch(0.65 0.12 55);
+  --chart-3: var(--tone-accent);
+  --chart-4: oklch(0.55 0.08 55);
+  --chart-5: oklch(0.45 0.06 55);
+  --sidebar: oklch(0.96 0.01 60);
+  --sidebar-foreground: oklch(0.38 0.02 60);
+  --sidebar-primary: var(--tone-primary);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.94 0.015 60);
+  --sidebar-accent-foreground: oklch(0.30 0.02 60);
+  --sidebar-border: oklch(0 0 0 / 8%);
+  --sidebar-ring: var(--tone-primary);
+  --titlebar-bg: oklch(0.95 0.01 60);
+  --titlebar-btn-hover: oklch(0.92 0.012 60);
+  --titlebar-close-hover: oklch(0.55 0.22 25);
+  --logo-bg: var(--tone-primary);
+  --placeholder-bg: oklch(0.96 0.008 60);
+}
+
+[data-theme="ember-warm"][data-mode="dark"] {
+  --tone-ground: #1c1c1c;
+  --tone-primary: #c8843b;
+  --tone-accent: #242424;
+
+  --background: var(--tone-ground);
+  --foreground: oklch(0.90 0.008 60);
+  --card: var(--tone-accent);
+  --card-foreground: oklch(0.90 0.008 60);
+  --popover: var(--tone-accent);
+  --popover-foreground: oklch(0.90 0.008 60);
+  --primary: var(--tone-primary);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.22 0.015 60);
+  --secondary-foreground: oklch(0.85 0.008 60);
+  --muted: oklch(0.20 0.01 60);
+  --muted-foreground: oklch(0.58 0.01 60);
+  --accent: var(--tone-accent);
+  --accent-foreground: oklch(0.88 0.01 60);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: var(--tone-primary);
+  --chart-1: var(--tone-primary);
+  --chart-2: oklch(0.70 0.14 55);
+  --chart-3: oklch(0.60 0.10 55);
+  --chart-4: oklch(0.50 0.08 55);
+  --chart-5: oklch(0.40 0.06 55);
+  --sidebar: oklch(0.14 0.012 60);
+  --sidebar-foreground: oklch(0.78 0.01 60);
+  --sidebar-primary: var(--tone-primary);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.22 0.018 60);
+  --sidebar-accent-foreground: oklch(0.90 0.008 60);
+  --sidebar-border: oklch(1 0 0 / 6%);
+  --sidebar-ring: var(--tone-primary);
+  --titlebar-bg: oklch(0.12 0.012 60);
+  --titlebar-btn-hover: oklch(0.22 0.015 60);
+  --titlebar-close-hover: oklch(0.55 0.22 25);
+  --logo-bg: var(--tone-primary);
+  --placeholder-bg: var(--tone-accent);
+}
+
+/* ================================================================
+ *  科技蓝 (Tech Blue)
+ *  白昼: #F5F6FA / #3370FF / #00D6B9
+ *  暗夜: #0D1520 / #4D85FF / #00E8C8
+ * ================================================================ */
+
+[data-theme="tech-blue"][data-mode="light"] {
+  --tone-ground: #F5F6FA;
+  --tone-primary: #3370FF;
+  --tone-accent: #00D6B9;
+
+  --background: var(--tone-ground);
+  --foreground: oklch(0.22 0.015 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.015 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.015 260);
+  --primary: var(--tone-primary);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.008 260);
+  --secondary-foreground: oklch(0.30 0.015 260);
+  --muted: oklch(0.96 0.004 260);
+  --muted-foreground: oklch(0.52 0.01 260);
+  --accent: var(--tone-accent);
+  --accent-foreground: oklch(0.28 0.03 180);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0 0 0 / 10%);
+  --input: oklch(0 0 0 / 12%);
+  --ring: var(--tone-primary);
+  --chart-1: var(--tone-primary);
+  --chart-2: oklch(0.60 0.16 260);
+  --chart-3: var(--tone-accent);
+  --chart-4: oklch(0.50 0.12 260);
+  --chart-5: oklch(0.42 0.10 260);
+  --sidebar: oklch(0.96 0.006 260);
+  --sidebar-foreground: oklch(0.32 0.015 260);
+  --sidebar-primary: var(--tone-primary);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.94 0.012 260);
+  --sidebar-accent-foreground: oklch(0.28 0.015 260);
+  --sidebar-border: oklch(0 0 0 / 8%);
+  --sidebar-ring: var(--tone-primary);
+  --titlebar-bg: oklch(0.95 0.006 260);
+  --titlebar-btn-hover: oklch(0.92 0.008 260);
+  --titlebar-close-hover: oklch(0.55 0.22 25);
+  --logo-bg: var(--tone-primary);
+  --placeholder-bg: oklch(0.96 0.004 260);
+}
+
+[data-theme="tech-blue"][data-mode="dark"] {
+  --tone-ground: #0D1520;
+  --tone-primary: #4D85FF;
+  --tone-accent: #00E8C8;
+
+  --background: var(--tone-ground);
+  --foreground: oklch(0.90 0.008 260);
+  --card: oklch(0.18 0.018 260);
+  --card-foreground: oklch(0.90 0.008 260);
+  --popover: oklch(0.18 0.018 260);
+  --popover-foreground: oklch(0.90 0.008 260);
+  --primary: var(--tone-primary);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.22 0.018 260);
+  --secondary-foreground: oklch(0.82 0.01 260);
+  --muted: oklch(0.20 0.014 260);
+  --muted-foreground: oklch(0.58 0.012 260);
+  --accent: var(--tone-accent);
+  --accent-foreground: oklch(0.15 0.02 180);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: var(--tone-primary);
+  --chart-1: var(--tone-primary);
+  --chart-2: oklch(0.62 0.16 260);
+  --chart-3: var(--tone-accent);
+  --chart-4: oklch(0.50 0.12 260);
+  --chart-5: oklch(0.40 0.10 260);
+  --sidebar: oklch(0.10 0.018 260);
+  --sidebar-foreground: oklch(0.78 0.01 260);
+  --sidebar-primary: var(--tone-primary);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.22 0.02 260);
+  --sidebar-accent-foreground: oklch(0.90 0.008 260);
+  --sidebar-border: oklch(1 0 0 / 6%);
+  --sidebar-ring: var(--tone-primary);
+  --titlebar-bg: oklch(0.08 0.018 260);
+  --titlebar-btn-hover: oklch(0.18 0.018 260);
+  --titlebar-close-hover: oklch(0.55 0.22 25);
+  --logo-bg: var(--tone-primary);
+  --placeholder-bg: oklch(0.16 0.016 260);
+}
+
+/* ================================================================
+ *  清新绿 (Fresh Green)
+ *  白昼: #F1ECE0 / #117C0D / #FAC75E
+ *  暗夜: #1C1A13 / #4EC966 / #F5C542
+ * ================================================================ */
+
+[data-theme="fresh-green"][data-mode="light"] {
+  --tone-ground: #F1ECE0;
+  --tone-primary: #117C0D;
+  --tone-accent: #FAC75E;
+
+  --background: var(--tone-ground);
+  --foreground: oklch(0.25 0.015 140);
+  --card: oklch(0.97 0.008 140);
+  --card-foreground: oklch(0.25 0.015 140);
+  --popover: oklch(0.97 0.008 140);
+  --popover-foreground: oklch(0.25 0.015 140);
+  --primary: var(--tone-primary);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.94 0.01 140);
+  --secondary-foreground: oklch(0.32 0.015 140);
+  --muted: oklch(0.94 0.006 140);
+  --muted-foreground: oklch(0.52 0.01 140);
+  --accent: var(--tone-accent);
+  --accent-foreground: oklch(0.30 0.04 80);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0 0 0 / 10%);
+  --input: oklch(0 0 0 / 12%);
+  --ring: var(--tone-primary);
+  --chart-1: var(--tone-primary);
+  --chart-2: oklch(0.58 0.14 140);
+  --chart-3: var(--tone-accent);
+  --chart-4: oklch(0.48 0.10 140);
+  --chart-5: oklch(0.38 0.08 140);
+  --sidebar: oklch(0.95 0.008 140);
+  --sidebar-foreground: oklch(0.35 0.015 140);
+  --sidebar-primary: var(--tone-primary);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.92 0.014 140);
+  --sidebar-accent-foreground: oklch(0.28 0.015 140);
+  --sidebar-border: oklch(0 0 0 / 8%);
+  --sidebar-ring: var(--tone-primary);
+  --titlebar-bg: oklch(0.94 0.008 140);
+  --titlebar-btn-hover: oklch(0.91 0.01 140);
+  --titlebar-close-hover: oklch(0.55 0.22 25);
+  --logo-bg: var(--tone-primary);
+  --placeholder-bg: oklch(0.94 0.006 140);
+}
+
+[data-theme="fresh-green"][data-mode="dark"] {
+  --tone-ground: #1C1A13;
+  --tone-primary: #4EC966;
+  --tone-accent: #F5C542;
+
+  --background: var(--tone-ground);
+  --foreground: oklch(0.90 0.006 140);
+  --card: oklch(0.20 0.012 140);
+  --card-foreground: oklch(0.90 0.006 140);
+  --popover: oklch(0.20 0.012 140);
+  --popover-foreground: oklch(0.90 0.006 140);
+  --primary: var(--tone-primary);
+  --primary-foreground: oklch(0.15 0.02 140);
+  --secondary: oklch(0.24 0.012 140);
+  --secondary-foreground: oklch(0.82 0.008 140);
+  --muted: oklch(0.22 0.01 140);
+  --muted-foreground: oklch(0.58 0.008 140);
+  --accent: var(--tone-accent);
+  --accent-foreground: oklch(0.18 0.03 80);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: var(--tone-primary);
+  --chart-1: var(--tone-primary);
+  --chart-2: oklch(0.65 0.14 140);
+  --chart-3: var(--tone-accent);
+  --chart-4: oklch(0.55 0.10 140);
+  --chart-5: oklch(0.45 0.08 140);
+  --sidebar: oklch(0.15 0.014 140);
+  --sidebar-foreground: oklch(0.78 0.008 140);
+  --sidebar-primary: var(--tone-primary);
+  --sidebar-primary-foreground: oklch(0.15 0.02 140);
+  --sidebar-accent: oklch(0.24 0.015 140);
+  --sidebar-accent-foreground: oklch(0.90 0.006 140);
+  --sidebar-border: oklch(1 0 0 / 6%);
+  --sidebar-ring: var(--tone-primary);
+  --titlebar-bg: oklch(0.12 0.012 140);
+  --titlebar-btn-hover: oklch(0.22 0.012 140);
+  --titlebar-close-hover: oklch(0.55 0.22 25);
+  --logo-bg: var(--tone-primary);
+  --placeholder-bg: oklch(0.18 0.01 140);
+}
