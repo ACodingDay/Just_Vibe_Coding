@@ -27,6 +27,16 @@
 |--------|------|------|
 | Tauri v2 + Rust + Vanilla JS | Windows | ✅ 可用 |
 
+
+### 🧹 [cleanmywin-tauri-app](./cleanmywin-tauri-app/)
+
+> Windows 系统垃圾清理工具
+
+基于 **Tauri 2 + React + TypeScript + shadcn/ui** 构建的 Windows 桌面应用，内置 20+ 条清理规则，支持一键扫描与清理系统缓存、浏览器缓存、微信/QQ/WPS 等应用垃圾，支持自定义规则与移入回收站。
+
+| 技术栈 | 平台 | 状态 |
+|--------|------|------|
+| Tauri v2 + Rust + React + TypeScript + shadcn/ui | Windows | ✅ 可用 |
 ### 🧹 [deskclean-tauri-app](./deskclean-tauri-app/)
 
 > 桌面文件可视化管理 & 整理助手

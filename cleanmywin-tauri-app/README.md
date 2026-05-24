@@ -1,73 +1,64 @@
-# React + TypeScript + Vite
+# 🧹 CleanMyWin — Windows 系统清理工具
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+基于 **Tauri 2** 的 Windows 垃圾文件扫描与清理工具，一键释放磁盘空间，支持自定义规则 ✨
 
-Currently, two official plugins are available:
+## 🛠️ 技术栈
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| 层级 | 技术 |
+|------|------|
+| 🦀 后端框架 | **Tauri 2** (Rust) |
+| ⚛️ 前端框架 | **React 19** + **TypeScript** |
+| 🎨 UI 组件 | **shadcn/ui** + **Tailwind CSS** |
+| ⚡ 构建工具 | **Vite** |
+| 🔌 核心插件 | `tauri-plugin-store` (持久化)、`tauri-plugin-dialog` (文件选择)、`tauri-plugin-log` |
 
-## React Compiler
+## ✨ 主要功能
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- 🔍 **深度扫描** — 内置 20+ 条清理规则，覆盖系统缓存、浏览器缓存、微信/QQ/WPS 等应用垃圾
+- ⚡ **一键清理** — 流式清理 + 实时进度反馈，支持移入回收站（可恢复）
+- 📋 **规则管理** — 内置规则勾选启用/禁用，按风险等级排序
+- ✏️ **自定义规则** — 支持用户新增扫描路径、匹配模式、风险标签、清理类型
+- 📂 **文件夹选择** — 集成系统原生文件夹选择器，避免手动输入路径错误
+- 🎨 **主题切换** — 支持亮色/暗色/科技蓝主题
+- 📊 **累计统计** — 持久化记录累计清理次数与释放空间
 
-## Expanding the ESLint configuration
+## 📦 开发
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```bash
+# 安装依赖
+pnpm install
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# 启动开发服务器
+pnpm tauri dev
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# 构建生产版本
+pnpm tauri build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 📁 项目结构
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+cleanmywin-tauri-app/
+├── src/                    # 前端源码
+│   ├── components/         # 通用组件 (UI / MainContent / Sidebar / scan)
+│   ├── pages/              # 页面 (Home / Cleanup / Scan / Custom / Settings)
+│   ├── hooks/              # 自定义 Hooks (useScanRules)
+│   ├── lib/                # 工具函数 (format)
+│   ├── types/              # TypeScript 类型定义
+│   └── styles/             # 全局样式
+├── src-tauri/              # Rust 后端
+│   ├── src/
+│   │   ├── rules/          # 规则引擎 (types / loader)
+│   │   ├── scanner/        # 扫描器 (engine)
+│   │   └── lib.rs          # 命令注册
+│   ├── capabilities/       # Tauri 权限配置
+│   └── icons/              # 应用图标资源
+├── public/                 # 静态资源 (base_rules.json / lottie)
+├── vite.config.ts
+├── tsconfig.json
+└── package.json
+```
+
+## 📄 License
+
+MIT
