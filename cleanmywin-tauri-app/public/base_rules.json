@@ -438,5 +438,203 @@
     "is_interactive": false,
     "clean_type": "SendToTrash",
     "clean_command": null
+  },
+  {
+    "id": "jetbrains_config",
+    "name": "IntelliJ IDEA 配置目录",
+    "category": "DevClean",
+    "description": "清理 IntelliJ IDEA 用户配置目录（包含 keymaps、配色方案、自定义 VM 选项、平台属性等）—— Configuration directory",
+    "paths": [
+      "%APPDATA%\\JetBrains"
+    ],
+    "patterns": [
+      "IntelliJIdea*/**/*"
+    ],
+    "risk_level": "High",
+    "default_enabled": false,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "jetbrains_caches",
+    "name": "IntelliJ IDEA 系统缓存",
+    "category": "DevClean",
+    "description": "清理 IntelliJ IDEA 缓存和本地历史文件（可重新生成）—— System directory",
+    "paths": [
+      "%LOCALAPPDATA%\\JetBrains"
+    ],
+    "patterns": [
+      "IntelliJIdea*/**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "jetbrains_plugins",
+    "name": "IntelliJ IDEA 插件目录",
+    "category": "DevClean",
+    "description": "清理 IntelliJ IDEA 用户安装的插件文件—— Plugins directory",
+    "paths": [
+      "%APPDATA%\\JetBrains"
+    ],
+    "patterns": [
+      "IntelliJIdea*/plugins/**/*"
+    ],
+    "risk_level": "Medium",
+    "default_enabled": false,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "jetbrains_logs",
+    "name": "IntelliJ IDEA 日志目录",
+    "category": "DevClean",
+    "description": "清理 IntelliJ IDEA 产品日志和线程转储文件—— Logs directory",
+    "paths": [
+      "%LOCALAPPDATA%\\JetBrains"
+    ],
+    "patterns": [
+      "IntelliJIdea*/log/**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  }
+  ,
+  {
+    "id": "vscode_caches",
+    "name": "VS Code 缓存与日志",
+    "category": "DevClean",
+    "description": "清理 VS Code 扩展缓存、代码缓存、Service Worker 缓存、崩溃报告及日志文件",
+    "paths": [
+      "%USERPROFILE%\\AppData\\Roaming\\Code"
+    ],
+    "patterns": [
+      "Cache/**/*",
+      "CachedData/**/*",
+      "CachedExtensions/**/*",
+      "CachedExtensionVSIXs/**/*",
+      "Code Cache/**/*",
+      "Crashpad/**/*",
+      "logs/**/*",
+      "Service Worker/**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "vscode_history",
+    "name": "VS Code 工作区历史",
+    "category": "DevClean",
+    "description": "清理 VS Code 工作区存储（打开的标签页）和本地文件历史记录（Ctrl+S 副本）",
+    "paths": [
+      "%USERPROFILE%\\AppData\\Roaming\\Code"
+    ],
+    "patterns": [
+      "User/workspaceStorage/**/*",
+      "User/History/**/*"
+    ],
+    "risk_level": "Medium",
+    "default_enabled": false,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "vscode_ipch",
+    "name": "VS Code C/C++ IntelliSense 缓存",
+    "category": "DevClean",
+    "description": "清理 C/C++ 扩展的 IntelliSense 预编译头缓存（ipch 目录，可达数 GB）",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\vscode-cpptools"
+    ],
+    "patterns": [
+      "ipch/**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "vscode_extensions",
+    "name": "VS Code 扩展文件",
+    "category": "DevClean",
+    "description": "清理已安装的 VS Code 扩展文件目录（清理后需重新安装扩展）",
+    "paths": [
+      "%USERPROFILE%\\.vscode"
+    ],
+    "patterns": [
+      "extensions/**/*"
+    ],
+    "risk_level": "Medium",
+    "default_enabled": false,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  }
+  ,
+  {
+    "id": "pnpm_store_prune",
+    "name": "pnpm 存储精简",
+    "category": "DevClean",
+    "description": "执行 pnpm store prune，仅清理不再被任何项目引用的孤立依赖包",
+    "paths": [],
+    "patterns": [],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "RunCommand",
+    "clean_command": "pnpm store prune"
+  },
+  {
+    "id": "pnpm_store_clean",
+    "name": "pnpm 全局存储目录",
+    "category": "DevClean",
+    "description": "清空 pnpm 全局存储目录（含缓存元数据与硬链接源，下次安装需重新下载所有依赖）",
+    "paths": [
+      "%LOCALAPPDATA%\\pnpm-cache",
+      "%USERPROFILE%\\.pnpm-store"
+    ],
+    "patterns": [
+      "**/*"
+    ],
+    "risk_level": "Medium",
+    "default_enabled": false,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  }
+  ,
+  {
+    "id": "nvidia_system_cache",
+    "name": "NVIDIA 系统级缓存",
+    "category": "SystemClean",
+    "description": "清理系统级 NVIDIA 着色器缓存、驱动日志、GeForce Experience 下载临时文件",
+    "paths": [
+      "%systemdrive%\\ProgramData\\NVIDIA Corporation"
+    ],
+    "patterns": [
+      "NV_Cache/**/*",
+      "DisplayDriverLogs/**/*",
+      "Downloader/**/*",
+      "Temp/**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
   }
 ]

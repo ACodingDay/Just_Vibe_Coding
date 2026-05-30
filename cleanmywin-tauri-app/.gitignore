@@ -10,6 +10,7 @@ lerna-debug.log*
 # Dependencies
 node_modules
 .pnpm-store
+%TEMP%
 
 # Build output
 dist
@@ -23,6 +24,9 @@ src-tauri/gen/
 # App runtime data (local)
 custom_rules.json
 settings.json
+
+# CodeWhale local
+.codewhale/
 
 # Editor
 .vscode/*

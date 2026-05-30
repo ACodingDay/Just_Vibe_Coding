@@ -2,8 +2,10 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { toast } from "sonner";
+import { setIsOperating } from "@/lib/closeTrayCache";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { useSmoothProgress } from "@/hooks/useSmoothProgress";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Item,
@@ -152,8 +154,16 @@ export function CleanupPage({ autoStartScan }: CleanupPageProps) {
   const [scanFiles, setScanFiles] = useState<ScanFileItem[]>([]);
   const [scanProgress, setScanProgress] = useState(0);
   const [cleanProgress, setCleanProgress] = useState(0);
+  const smoothScan = useSmoothProgress(scanProgress);
+  const smoothClean = useSmoothProgress(cleanProgress);
   const scanTotalRef = useRef(0); // 启用规则数，用于扫描进度
   const cleanTargetRef = useRef(0); // 待清理文件数，用于清理进度
+
+  // 同步操作状态到全局变量（供 App.tsx 关闭窗口时检查）
+  useEffect(() => {
+    setIsOperating(pageState === "scanning" || pageState === "cleaning");
+  }, [pageState]);
+
   const [cleanedFiles, setCleanedFiles] = useState<ScanFileItem[]>([]);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {},
@@ -581,11 +591,11 @@ export function CleanupPage({ autoStartScan }: CleanupPageProps) {
               )}
               {isScanned && <CheckCircle2 className="size-4 text-green-500" />}
               <Progress
-                value={isCleaning ? cleanProgress : scanProgress}
+                value={isCleaning ? smoothClean : smoothScan}
                 className="flex-1"
               />
               <span className="text-xs text-muted-foreground tabular-nums">
-                {Math.round(isCleaning ? cleanProgress : scanProgress)}%
+                {Math.round(isCleaning ? smoothClean : smoothScan)}%
               </span>
             </div>
             <div className="flex flex-1 flex-col min-h-0 rounded-md border">

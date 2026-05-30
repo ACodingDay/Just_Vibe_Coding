@@ -1,4 +1,8 @@
-use tauri::Manager;
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::TrayIconBuilder,
+    Manager,
+};
 use tauri_plugin_store::StoreExt;
 use chrono::Local;
 
@@ -105,6 +109,12 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            let _ = app
+                .get_webview_window("main")
+                .expect("no main window")
+                .set_focus();
+        }))
         .invoke_handler(tauri::generate_handler![
             get_protection_days,
             get_user_rule_prefs,
@@ -136,6 +146,36 @@ pub fn run() {
                         .level(log::LevelFilter::Info)
                         .build(),
                 )?;
+            }
+            // 创建系统托盘（仅在开启"最小化到托盘"时显示）
+            let store = app.store("settings.json").ok();
+            let close_to_tray = store
+                .as_ref()
+                .and_then(|s| s.get("close_to_tray"))
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            if close_to_tray {
+                let show = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
+                let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+                let menu = Menu::with_items(app, &[&show, &quit])?;
+                let icon = app.default_window_icon().unwrap().clone();
+                let _tray = TrayIconBuilder::new()
+                    .icon(icon)
+                    .tooltip("CleanMyWin")
+                    .menu(&menu)
+                    .on_menu_event(|app, event| match event.id.as_ref() {
+                        "show" => {
+                            if let Some(w) = app.get_webview_window("main") {
+                                let _ = w.show();
+                                let _ = w.set_focus();
+                            }
+                        }
+                        "quit" => {
+                            app.exit(0);
+                        }
+                        _ => {}
+                    })
+                    .build(app)?;
             }
             Ok(())
         })

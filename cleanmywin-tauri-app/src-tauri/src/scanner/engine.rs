@@ -223,7 +223,14 @@ fn clean_file_rule_streaming(
                     *total_freed += file_size;
                     None
                 }
-                Err(e) => Some(format!("{}", e)),
+                Err(e) => {
+                    let locked = e.raw_os_error().map_or(false, |c| c == 32 || c == 33);
+                    Some(if locked {
+                        format!("文件被占用: {}", e)
+                    } else {
+                        format!("{}", e)
+                    })
+                },
             };
             let _ = app.emit("cleanup-clean-progress", CleanProgressPayload {
                 rule_id: rule.id.clone(),
@@ -552,12 +559,12 @@ fn clean_file_rule_trash_streaming(app: &tauri::AppHandle, rule: &BaseRule, _sel
                     let _ = app.emit("cleanup-clean-progress", CleanProgressPayload { rule_id: rule.id.clone(), path: entry.path().to_string_lossy().to_string(), size: file_size, error: None });
                 }
                 Err(e) => {
-                    let _ = app.emit("cleanup-clean-progress", CleanProgressPayload { rule_id: rule.id.clone(), path: entry.path().to_string_lossy().to_string(), size: file_size, error: Some(format!("{}", e)) });
+                    let msg = format!("移入回收站失败: {}", e);
+                    let _ = app.emit("cleanup-clean-progress", CleanProgressPayload { rule_id: rule.id.clone(), path: entry.path().to_string_lossy().to_string(), size: file_size, error: Some(msg) });
                 }
             }
         }
     }
     cleaned
 }
-
 

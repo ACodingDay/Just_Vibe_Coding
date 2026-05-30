@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Palette, Bell, Info, Check, Sun, Moon } from "lucide-react";
+import { setCloseToTrayCache } from "@/lib/closeTrayCache";
 import { useTheme, THEMES, type ThemeId } from "@/hooks/useTheme";
 import {
   Item,
@@ -40,6 +41,7 @@ const settingTabs: {
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingTab>("appearance");
   const [notifyScan, setNotifyScan] = useState(true);
+  const [closeToTray, setCloseToTray] = useState(false);
   const { theme, mode, setTheme, toggleMode } = useTheme();
 
   useEffect(() => {
@@ -48,9 +50,21 @@ export function SettingsPage() {
         store.get<boolean>("notify_scan_complete").then((v) => {
           if (v !== null && v !== undefined) setNotifyScan(v);
         });
+        store.get<boolean>("close_to_tray").then((v) => {
+          if (v !== null && v !== undefined) setCloseToTray(v);
+        });
       });
     });
   }, []);
+
+  function persistSetting(key: string, value: unknown) {
+    import("@tauri-apps/plugin-store").then(({ load }) => {
+      load("settings.json").then((store) => {
+        store.set(key, value);
+        store.save();
+      });
+    });
+  }
 
   function handleNotifyScanChange(checked: boolean) {
     setNotifyScan(checked);
@@ -163,6 +177,20 @@ export function SettingsPage() {
               <Switch
                 checked={notifyScan}
                 onCheckedChange={handleNotifyScanChange}
+              />
+            </Item>
+            <Item size="sm" variant="outline">
+              <ItemContent>
+                <ItemTitle>关闭窗口时最小化到托盘</ItemTitle>
+                <ItemDescription>点击关闭按钮时不退出，隐藏到系统托盘</ItemDescription>
+              </ItemContent>
+              <Switch
+                checked={closeToTray}
+                onCheckedChange={(checked) => {
+                  setCloseToTray(checked);
+                  setCloseToTrayCache(checked);
+                  persistSetting("close_to_tray", checked);
+                }}
               />
             </Item>
           </div>
