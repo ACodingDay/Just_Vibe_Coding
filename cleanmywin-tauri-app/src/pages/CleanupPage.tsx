@@ -174,6 +174,7 @@ export function CleanupPage({ autoStartScan }: CleanupPageProps) {
   const enabledIdsRef = useRef<string[]>([]);
   const unlistenRef = useRef<UnlistenFn[]>([]);
   const listenersReady = useRef(false);
+  const regPermToastShown = useRef(false);
 
   /* 卸载标记 */
   useEffect(() => {
@@ -243,6 +244,18 @@ export function CleanupPage({ autoStartScan }: CleanupPageProps) {
     });
 
     const p3 = listen<CleanProgressEvent>("cleanup-clean-progress", (e) => {
+      // 注册表 HKLM 删除需要管理员权限，失败时弹一次提示
+      if (
+        e.payload.error &&
+        e.payload.path.includes("HKLM:") &&
+        !regPermToastShown.current
+      ) {
+        regPermToastShown.current = true;
+        toast.warning("部分注册表条目需要管理员权限才能删除", {
+          description: "请以管理员身份运行应用以清理 HKLM 下的残留条目",
+          duration: 5000,
+        });
+      }
       setCleanedFiles((prev) => {
         const next = [
           ...prev,
@@ -452,12 +465,20 @@ export function CleanupPage({ autoStartScan }: CleanupPageProps) {
     setCleanProgress(0);
     setCleanedFiles([]);
     cleanTargetRef.current = selectedCount;
+    regPermToastShown.current = false;
     setPageState("cleaning");
+    // 只传有勾选文件的规则 ID，避免未勾选的规则组也被执行
+    const activeRuleIds = [
+      ...new Set(
+        scanFiles.filter((f) => selectedPaths.has(f.path)).map((f) => f.rule_id),
+      ),
+    ];
     const doClean = () => {
       invoke("start_cleanup_clean", {
         baseRules: rulesRef.current,
         enabledIds: enabledIdsRef.current,
         selectedPaths: Array.from(selectedPaths),
+        activeRuleIds,
       }).catch(() => setPageState("scanned"));
     };
     if (listenersReady.current) {

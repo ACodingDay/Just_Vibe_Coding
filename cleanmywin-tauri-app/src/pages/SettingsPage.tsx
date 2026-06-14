@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Palette, Bell, Info, Check, Sun, Moon } from "lucide-react";
+import { load } from "@tauri-apps/plugin-store";
 import { setCloseToTrayCache } from "@/lib/closeTrayCache";
 import { useTheme, THEMES, type ThemeId } from "@/hooks/useTheme";
 import {
@@ -45,34 +46,28 @@ export function SettingsPage() {
   const { theme, mode, setTheme, toggleMode } = useTheme();
 
   useEffect(() => {
-    import("@tauri-apps/plugin-store").then(({ load }) => {
-      load("settings.json").then((store) => {
-        store.get<boolean>("notify_scan_complete").then((v) => {
-          if (v !== null && v !== undefined) setNotifyScan(v);
-        });
-        store.get<boolean>("close_to_tray").then((v) => {
-          if (v !== null && v !== undefined) setCloseToTray(v);
-        });
+    load("settings.json").then((store) => {
+      store.get<boolean>("notify_scan_complete").then((v) => {
+        if (v !== null && v !== undefined) setNotifyScan(v);
+      });
+      store.get<boolean>("close_to_tray").then((v) => {
+        if (v !== null && v !== undefined) setCloseToTray(v);
       });
     });
   }, []);
 
   function persistSetting(key: string, value: unknown) {
-    import("@tauri-apps/plugin-store").then(({ load }) => {
-      load("settings.json").then((store) => {
-        store.set(key, value);
-        store.save();
-      });
+    load("settings.json").then((store) => {
+      store.set(key, value);
+      store.save();
     });
   }
 
   function handleNotifyScanChange(checked: boolean) {
     setNotifyScan(checked);
-    import("@tauri-apps/plugin-store").then(({ load }) => {
-      load("settings.json").then((store) => {
-        store.set("notify_scan_complete", checked);
-        store.save();
-      });
+    load("settings.json").then((store) => {
+      store.set("notify_scan_complete", checked);
+      store.save();
     });
   }
 
@@ -182,7 +177,9 @@ export function SettingsPage() {
             <Item size="sm" variant="outline">
               <ItemContent>
                 <ItemTitle>关闭窗口时最小化到托盘</ItemTitle>
-                <ItemDescription>点击关闭按钮时不退出，隐藏到系统托盘</ItemDescription>
+                <ItemDescription>
+                  点击关闭按钮时不退出，隐藏到系统托盘
+                </ItemDescription>
               </ItemContent>
               <Switch
                 checked={closeToTray}
@@ -203,11 +200,11 @@ export function SettingsPage() {
             <Item size="sm" variant="outline">
               <ItemContent>
                 <ItemTitle>CleanMyWin</ItemTitle>
-                <ItemDescription>版本 0.1.0</ItemDescription>
+                <ItemDescription>版本 {__APP_VERSION__}</ItemDescription>
               </ItemContent>
             </Item>
             <p className="text-xs text-muted-foreground">
-              基于 Tauri + React 构建的 Windows 系统清理工具。
+              基于 Tauri + React 构建的 Windows 系统清理工具
             </p>
           </div>
         );

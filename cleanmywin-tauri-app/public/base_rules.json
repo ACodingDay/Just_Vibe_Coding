@@ -320,15 +320,20 @@
     "clean_command": null
   },
   {
-    "id": "wechat_xwechat_temp",
-    "name": "微信4.x缓存(temp)",
+    "id": "xwechat_files_cleanup",
+    "name": "微信聊天媒体缓存",
     "category": "AppClean",
-    "description": "清理微信4.x版本xwechat_files下各账号的temp缓存目录（全部可删）",
+    "description": "清理 xwechat_files 下各账号的聊天媒体缓存（cache、temp、文件、视频、附件、头像），不影响聊天记录",
     "paths": [
       "%USERPROFILE%\\Documents\\xwechat_files"
     ],
     "patterns": [
-      "*/temp/**/*"
+      "*/cache/**/*",
+      "*/temp/**/*",
+      "*/msg/file/**/*",
+      "*/msg/video/**/*",
+      "*/msg/attach/**/*",
+      "*/all_users/head_imgs/**/*"
     ],
     "risk_level": "Low",
     "default_enabled": true,
@@ -390,18 +395,19 @@
   },
   {
     "id": "xwechat_appdata",
-    "name": "微信AppData缓存",
+    "name": "微信运行日志与崩溃记录",
     "category": "AppClean",
-    "description": "清理微信AppData\\Roaming下xwechat缓存（高危：清理后需重新扫码登录）",
+    "description": "清理微信 AppData 下的 log 和 crashinfo 文件夹（约 50MB），不影响 XPlugin/radium 等运行组件",
     "paths": [
       "%USERPROFILE%\\AppData\\Roaming\\Tencent\\xwechat"
     ],
     "patterns": [
-      "**/*"
+      "log/**/*",
+      "crashinfo/**/*"
     ],
-    "risk_level": "High",
-    "default_enabled": false,
-    "is_interactive": true,
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
     "clean_type": "SendToTrash",
     "clean_command": null
   },
@@ -635,6 +641,113 @@
     "default_enabled": true,
     "is_interactive": false,
     "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "conda_pkgs",
+    "name": "Conda 包缓存",
+    "category": "DevClean",
+    "description": "清理 Conda 包下载缓存（pkgs 目录），conda 会按需重新下载所需包",
+    "paths": [
+      "%USERPROFILE%\\anaconda3",
+      "%USERPROFILE%\\miniconda3",
+      "%USERPROFILE%\\miniforge3",
+      "%USERPROFILE%\\.conda"
+    ],
+    "patterns": [
+      "pkgs/**/*"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "conda_envs",
+    "name": "Conda 虚拟环境",
+    "category": "DevClean",
+    "description": "清理 Conda 所有虚拟环境（envs 目录），清理后需重新创建所需环境",
+    "paths": [
+      "%USERPROFILE%\\anaconda3",
+      "%USERPROFILE%\\miniconda3",
+      "%USERPROFILE%\\miniforge3",
+      "%USERPROFILE%\\.conda"
+    ],
+    "patterns": [
+      "envs/**/*"
+    ],
+    "risk_level": "Medium",
+    "default_enabled": false,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "aclos_replays",
+    "name": "ACLOS 游戏录像",
+    "category": "AppClean",
+    "description": "永久删除所有用户的 ACLOS 游戏录像文件（不影响游戏运行，但录像不可恢复）",
+    "paths": [
+      "%ALLUSERS%\\AppData\\ACLOS"
+    ],
+    "patterns": [
+      "**/*"
+    ],
+    "risk_level": "Medium",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "DeleteFiles",
+    "clean_command": null
+  },
+  {
+    "id": "orphaned_open_with",
+    "name": "打开方式残留项",
+    "category": "SystemClean",
+    "description": "清理右键菜单中指向已卸载软件的打开方式残留注册表条目",
+    "paths": [],
+    "patterns": [],
+    "risk_level": "Medium",
+    "default_enabled": false,
+    "is_interactive": false,
+    "clean_type": "CleanOrphanedOpenWith",
+    "clean_command": null
+  },
+  {
+    "id": "stray_home_dev_files",
+    "name": "用户目录误放的开发文件",
+    "category": "SystemClean",
+    "description": "清理用户主目录下误放的 Python 脚本和 npm 包文件",
+    "paths": [
+      "%USERPROFILE%"
+    ],
+    "patterns": [
+      "*.py",
+      "package.json",
+      "package-lock.json"
+    ],
+    "risk_level": "Low",
+    "default_enabled": true,
+    "is_interactive": false,
+    "clean_type": "SendToTrash",
+    "clean_command": null
+  },
+  {
+    "id": "stray_home_dev_dirs",
+    "name": "用户目录误放的开发目录",
+    "category": "SystemClean",
+    "description": "永久删除用户主目录下误放的 node_modules 和 npm-cache 目录",
+    "paths": [
+      "%USERPROFILE%\\node_modules",
+      "%USERPROFILE%\\npm-cache"
+    ],
+    "patterns": [
+      "**/*"
+    ],
+    "risk_level": "Medium",
+    "default_enabled": false,
+    "is_interactive": true,
+    "clean_type": "DeleteFiles",
     "clean_command": null
   }
 ]

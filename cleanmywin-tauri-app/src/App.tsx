@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { load } from '@tauri-apps/plugin-store'
 import { TitleBar } from '@/components/TitleBar'
 import { Sidebar, type PageId } from '@/components/Sidebar'
 import { MainContent } from '@/components/MainContent'
@@ -23,11 +24,9 @@ function App() {
 
   // 初始化：从 store 加载关闭行为设置
   useEffect(() => {
-    import('@tauri-apps/plugin-store').then(({ load }) => {
-      load('settings.json').then((store) => {
-        store.get<boolean>('close_to_tray').then((v) => {
-          setCloseToTrayCache(v ?? false);
-        });
+    load('settings.json').then((store) => {
+      store.get<boolean>('close_to_tray').then((v) => {
+        setCloseToTrayCache(v ?? false);
       });
     });
   }, []);

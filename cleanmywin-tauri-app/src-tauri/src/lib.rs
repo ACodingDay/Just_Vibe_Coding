@@ -99,8 +99,9 @@ async fn start_cleanup_clean(
     base_rules: Vec<rules::BaseRule>,
     enabled_ids: Vec<String>,
     selected_paths: Vec<String>,
+    active_rule_ids: Vec<String>,
 ) -> Result<(), String> {
-    scanner::clean_rules_streaming(&app, &base_rules, &enabled_ids, &selected_paths);
+    scanner::clean_rules_streaming(&app, &base_rules, &enabled_ids, &selected_paths, &active_rule_ids);
     Ok(())
 }
 

@@ -41,6 +41,9 @@ pub fn scan_rules_streaming(
             rules::CleanType::DeleteFiles | rules::CleanType::EmptyDirectory | rules::CleanType::SendToTrash => {
                 scan_file_rule_to_items(rule)
             }
+            rules::CleanType::CleanOrphanedOpenWith => {
+                scan_registry_open_with(rule)
+            }
             _ => vec![],
         };
 
@@ -68,7 +71,7 @@ fn scan_file_rule_to_items(rule: &BaseRule) -> Vec<ScanFileItem> {
     let glob_set = build_globset_engine(&rule.patterns);
 
     for path_str in &rule.paths {
-        let base_path = rules::expand_path(path_str);
+        for base_path in rules::expand_paths_multi(path_str) {
         if !base_path.exists() {
             continue;
         }
@@ -99,6 +102,7 @@ fn scan_file_rule_to_items(rule: &BaseRule) -> Vec<ScanFileItem> {
             }
         }
     }
+    }
     items
 }
 
@@ -124,14 +128,19 @@ pub fn clean_rules_streaming(
     rules: &[BaseRule],
     enabled_ids: &[String],
     selected_paths: &[String],
+    active_rule_ids: &[String],
 ) {
     use std::collections::HashSet;
     let selected: HashSet<String> = selected_paths.iter().cloned().collect();
+    let active: HashSet<String> = active_rule_ids.iter().cloned().collect();
     let mut total_cleaned: usize = 0;
     let mut total_freed: u64 = 0;
 
     for rule in rules {
         if !enabled_ids.contains(&rule.id) {
+            continue;
+        }
+        if !active.contains(&rule.id) {
             continue;
         }
 
@@ -159,6 +168,9 @@ pub fn clean_rules_streaming(
                     size: 0,
                     error: if r.errors.is_empty() { None } else { Some(r.errors.join("; ")) },
                 });
+            }
+            rules::CleanType::CleanOrphanedOpenWith => {
+                total_cleaned += clean_registry_open_with_streaming(app, rule, &selected);
             }
         }
     }
@@ -188,7 +200,7 @@ fn clean_file_rule_streaming(
     let glob_set = build_globset_engine(&rule.patterns);
 
     for path_str in &rule.paths {
-        let base_path = rules::expand_path(path_str);
+        for base_path in rules::expand_paths_multi(path_str) {
         if !base_path.exists() {
             continue;
         }
@@ -240,6 +252,7 @@ fn clean_file_rule_streaming(
             });
         }
     }
+    }
     cleaned
 }
 
@@ -267,6 +280,113 @@ fn clean_command_rule_engine(rule: &BaseRule, _selected: &std::collections::Hash
         }
     }
     CleanResult { rule_id: rule.id.clone(), files_cleaned: 0, bytes_freed: 0, errors }
+}
+
+/// ─── 注册表"打开方式"残留项扫描/清理 ────────────────────
+
+/// 从命令行字符串中解析出可执行文件路径
+/// 处理: "C:\path\app.exe" "%1"  /  C:\path\app.exe %1  /  app.exe
+fn parse_exe_path(cmd: &str) -> Option<String> {
+    let cmd = cmd.trim();
+    if cmd.is_empty() {
+        return None;
+    }
+    let exe = if cmd.starts_with('"') {
+        // 引号包裹: "C:\path\app.exe" args...
+        cmd[1..].split('"').next()?.to_string()
+    } else {
+        // 无引号: C:\path\app.exe args...
+        cmd.split_whitespace().next()?.to_string()
+    };
+    if exe.is_empty() { None } else { Some(exe) }
+}
+
+/// 注册表 Applications 路径常量
+const REG_APPS_PATHS: &[(&str, &str)] = &[
+    ("HKCU:", r"SOFTWARE\Classes\Applications"),
+    ("HKLM:", r"SOFTWARE\Classes\Applications"),
+];
+
+/// 扫描注册表中"打开方式"的孤立条目（可执行文件已不存在）
+fn scan_registry_open_with(rule: &BaseRule) -> Vec<ScanFileItem> {
+    use winreg::RegKey;
+    use winreg::enums::*;
+
+    let mut items = Vec::new();
+
+    for (hive_label, base_path) in REG_APPS_PATHS {
+        let hive = if *hive_label == "HKCU:" { HKEY_CURRENT_USER } else { HKEY_LOCAL_MACHINE };
+        let Ok(root) = RegKey::predef(hive).open_subkey(base_path) else { continue; };
+
+        for app_name in root.enum_keys().filter_map(|k| k.ok()) {
+            // 读取 shell\open\command 默认值
+            let cmd_path = format!("{}\\shell\\open\\command", app_name);
+            let Ok(cmd_key) = root.open_subkey(&cmd_path) else { continue; };
+            let Ok(command) = cmd_key.get_value::<String, _>("") else { continue; };
+
+            if let Some(exe) = parse_exe_path(&command) {
+                if !std::path::PathBuf::from(&exe).exists() {
+                    items.push(ScanFileItem {
+                        rule_id: rule.id.clone(),
+                        rule_name: rule.name.clone(),
+                        path: format!("{}\\{}\\{}", hive_label, base_path, app_name),
+                        size: 0,
+                    });
+                }
+            }
+        }
+    }
+    items
+}
+
+/// 流式清理注册表"打开方式"孤立条目
+fn clean_registry_open_with_streaming(
+    app: &tauri::AppHandle,
+    rule: &BaseRule,
+    selected: &std::collections::HashSet<String>,
+) -> usize {
+    use winreg::RegKey;
+    use winreg::enums::*;
+
+    let mut cleaned = 0;
+
+    for (hive_label, base_path) in REG_APPS_PATHS {
+        let hive = if *hive_label == "HKCU:" { HKEY_CURRENT_USER } else { HKEY_LOCAL_MACHINE };
+        let Ok(root) = RegKey::predef(hive).open_subkey_with_flags(base_path, KEY_ALL_ACCESS) else { continue; };
+
+        let app_names: Vec<String> = root.enum_keys().filter_map(|k| k.ok()).collect();
+        for app_name in app_names {
+            let reg_path = format!("{}\\{}\\{}", hive_label, base_path, app_name);
+            if !selected.contains(&reg_path) {
+                continue;
+            }
+            let error = match root.delete_subkey_all(&app_name) {
+                Ok(_) => {
+                    cleaned += 1;
+                    None
+                }
+                Err(e) => Some(format!("{}: {}", reg_path, e)),
+            };
+            let _ = app.emit("cleanup-clean-progress", CleanProgressPayload {
+                rule_id: rule.id.clone(),
+                path: reg_path,
+                size: 0,
+                error,
+            });
+        }
+    }
+    cleaned
+}
+
+/// 同步清理注册表"打开方式"孤立条目（给 ScanPage 使用）
+/// 注意：此规则类型需要逐条选择清理，同步路径不支持文件级筛选，返回空结果
+fn clean_registry_open_with_sync(_rule: &BaseRule) -> CleanResult {
+    CleanResult {
+        rule_id: _rule.id.clone(),
+        files_cleaned: 0,
+        bytes_freed: 0,
+        errors: vec![],
+    }
 }
 
 fn clean_recycle_bin_engine(rule: &BaseRule) -> CleanResult {
@@ -316,6 +436,14 @@ pub fn scan_rules(rules: &[BaseRule], enabled_ids: &[String]) -> Vec<ScanResult>
                     total_size: 0,
                 });
             }
+            rules::CleanType::CleanOrphanedOpenWith => {
+                let items = scan_registry_open_with(rule);
+                results.push(ScanResult {
+                    rule_id: rule.id.clone(),
+                    file_count: items.len() as u64,
+                    total_size: 0,
+                });
+            }
         }
     }
 
@@ -331,7 +459,7 @@ fn scan_file_rule(rule: &BaseRule) -> (u64, u64) {
     let glob_set = build_globset(&rule.patterns);
 
     for path_str in &rule.paths {
-        let base_path = rules::expand_path(path_str);
+        for base_path in rules::expand_paths_multi(path_str) {
         if !base_path.exists() {
             continue;
         }
@@ -360,6 +488,7 @@ fn scan_file_rule(rule: &BaseRule) -> (u64, u64) {
                 }
             }
         }
+    }
     }
 
     (file_count, total_size)
@@ -395,6 +524,7 @@ pub fn clean_rules(rules: &[BaseRule], enabled_ids: &[String]) -> Vec<CleanResul
             rules::CleanType::SendToTrash => clean_file_rule_trash(rule),
             rules::CleanType::RunCommand => clean_command_rule(rule),
             rules::CleanType::EmptyRecycleBin => clean_recycle_bin(rule),
+            rules::CleanType::CleanOrphanedOpenWith => clean_registry_open_with_sync(rule),
         };
 
         results.push(result);
@@ -412,7 +542,7 @@ fn clean_file_rule(rule: &BaseRule) -> CleanResult {
     let glob_set = build_globset(&rule.patterns);
 
     for path_str in &rule.paths {
-        let base_path = rules::expand_path(path_str);
+        for base_path in rules::expand_paths_multi(path_str) {
         if !base_path.exists() {
             continue;
         }
@@ -449,6 +579,7 @@ fn clean_file_rule(rule: &BaseRule) -> CleanResult {
                 }
             }
         }
+    }
     }
 
     CleanResult {
@@ -518,7 +649,7 @@ fn clean_file_rule_trash(rule: &BaseRule) -> CleanResult {
     let mut errors: Vec<String> = Vec::new();
     let glob_set = build_globset(&rule.patterns);
     for path_str in &rule.paths {
-        let base_path = rules::expand_path(path_str);
+        for base_path in rules::expand_paths_multi(path_str) {
         if !base_path.exists() { continue; }
         let walker = if rule.patterns.iter().any(|p| p.contains("**")) {
             WalkDir::new(&base_path).into_iter()
@@ -535,6 +666,7 @@ fn clean_file_rule_trash(rule: &BaseRule) -> CleanResult {
             }
         }
     }
+    }
     CleanResult { rule_id: rule.id.clone(), files_cleaned, bytes_freed, errors }
 }
 
@@ -543,7 +675,7 @@ fn clean_file_rule_trash_streaming(app: &tauri::AppHandle, rule: &BaseRule, _sel
     let mut cleaned: usize = 0;
     let glob_set = build_globset_engine(&rule.patterns);
     for path_str in &rule.paths {
-        let base_path = rules::expand_path(path_str);
+        for base_path in rules::expand_paths_multi(path_str) {
         if !base_path.exists() { continue; }
         let walker = if rule.patterns.iter().any(|p| p.contains("**")) {
             WalkDir::new(&base_path).into_iter()
@@ -564,6 +696,7 @@ fn clean_file_rule_trash_streaming(app: &tauri::AppHandle, rule: &BaseRule, _sel
                 }
             }
         }
+    }
     }
     cleaned
 }

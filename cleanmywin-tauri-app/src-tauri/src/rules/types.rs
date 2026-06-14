@@ -22,6 +22,8 @@ pub enum CleanType {
     EmptyRecycleBin,
     /// 移入回收站（send2trash）
     SendToTrash,
+    /// 清理注册表中已卸载软件的"打开方式"残留条目
+    CleanOrphanedOpenWith,
 }
 
 /// 规则分类
@@ -109,4 +111,27 @@ pub fn expand_path(raw: &str) -> PathBuf {
     }
 
     PathBuf::from(s)
+}
+
+/// 展开路径中的环境变量占位符（支持 %ALLUSERS% 多用户展开）
+pub fn expand_paths_multi(raw: &str) -> Vec<PathBuf> {
+    if raw.contains("%ALLUSERS%") {
+        let mut results = Vec::new();
+        if let Ok(drive) = std::env::var("SystemDrive") {
+            let users_dir = PathBuf::from(format!("{}\\Users", drive));
+            if let Ok(entries) = std::fs::read_dir(&users_dir) {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let path = entry.path();
+                    // 只处理包含 AppData 的真实用户目录
+                    if path.is_dir() && path.join("AppData").is_dir() {
+                        let expanded = raw.replace("%ALLUSERS%", &path.to_string_lossy());
+                        results.push(expand_path(&expanded));
+                    }
+                }
+            }
+        }
+        results
+    } else {
+        vec![expand_path(raw)]
+    }
 }

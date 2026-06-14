@@ -1,14 +1,15 @@
 {
   "name": "cleanmywin-tauri-app",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "postversion": "node scripts/sync-version.mjs"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",

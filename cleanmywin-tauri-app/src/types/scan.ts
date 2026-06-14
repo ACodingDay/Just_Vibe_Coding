@@ -1,5 +1,5 @@
 export type RiskLevel = 'Low' | 'Medium' | 'High'
-export type CleanType = 'DeleteFiles' | 'EmptyDirectory' | 'RunCommand' | 'EmptyRecycleBin' | 'SendToTrash'
+export type CleanType = 'DeleteFiles' | 'EmptyDirectory' | 'RunCommand' | 'EmptyRecycleBin' | 'SendToTrash' | 'CleanOrphanedOpenWith'
 export type RuleCategory = 'SystemClean' | 'BrowserClean' | 'AdvancedClean' | 'DevClean' | 'AppClean' | 'UserCustom'
 
 export interface BaseRule {
