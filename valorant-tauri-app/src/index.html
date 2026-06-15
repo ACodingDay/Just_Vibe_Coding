@@ -4,23 +4,33 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Valorant优化工具</title>
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="./vendor/daisyui-4.12.14.min.css" rel="stylesheet" type="text/css" />
+    <script src="./vendor/tailwindcss.js"></script>
     <link rel="stylesheet" href="./index.css">
 </head>
 <body class="min-h-screen overflow-hidden">
-    <div id="app"></div>
-    
+    <div id="app" class="flex items-center justify-center min-h-screen">
+        <span class="loading loading-spinner loading-lg text-error"></span>
+    </div>
+
     <script src="./main.js" type="module"></script>
     <script>
         // 动态加载 app.html 内容
         fetch('./app.html')
             .then(response => response.text())
             .then(html => {
-                document.getElementById('app').innerHTML = html;
+                const app = document.getElementById('app');
+                app.className = '';
+                app.innerHTML = html;
             })
             .catch(error => {
                 console.error('加载 app.html 失败:', error);
+                document.getElementById('app').innerHTML = `
+                    <div class="flex flex-col items-center justify-center min-h-screen gap-4">
+                        <span class="text-error">页面加载失败</span>
+                        <button class="btn btn-error btn-sm" onclick="location.reload()">重试</button>
+                    </div>
+                `;
             });
     </script>
 </body>

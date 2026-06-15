@@ -1,17 +1,54 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use log::{info, warn};
+use std::collections::HashMap;
+use std::sync::{LazyLock, Mutex};
 use sysinfo::System;
 use tauri::Manager;
 use tauri_plugin_log;
 use windows::Win32::Foundation::{CloseHandle, GetLastError, HANDLE, LUID};
 use windows::Win32::Security::{
-    AdjustTokenPrivileges, LookupPrivilegeValueW, LUID_AND_ATTRIBUTES, SE_DEBUG_NAME,
-    SE_PRIVILEGE_ENABLED, TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES, TOKEN_QUERY,
+    AdjustTokenPrivileges, GetTokenInformation, LookupPrivilegeValueW, LUID_AND_ATTRIBUTES,
+    SE_DEBUG_NAME, SE_PRIVILEGE_ENABLED, TOKEN_ADJUST_PRIVILEGES, TOKEN_ELEVATION,
+    TOKEN_PRIVILEGES, TOKEN_QUERY, TokenElevation,
 };
 use windows::Win32::System::Threading::{
-    GetCurrentProcess, OpenProcess, OpenProcessToken, SetPriorityClass, SetProcessAffinityMask,
-    IDLE_PRIORITY_CLASS, PROCESS_QUERY_INFORMATION, PROCESS_SET_INFORMATION,
+    GetCurrentProcess, GetPriorityClass, OpenProcess, OpenProcessToken, SetPriorityClass,
+    SetProcessAffinityMask, GetProcessAffinityMask, IDLE_PRIORITY_CLASS,
+    PROCESS_QUERY_INFORMATION, PROCESS_SET_INFORMATION,
 };
+
+// E2: 存储进程原始状态，用于 toggle 关闭时恢复
+struct ProcessOriginalState {
+    pid: u32,
+    affinity_mask: usize,
+    priority_class: u32,
+}
+
+static PROCESS_STATES: LazyLock<Mutex<HashMap<String, ProcessOriginalState>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+// E1: 检测当前是否以管理员身份运行
+#[tauri::command]
+fn is_elevated() -> bool {
+    unsafe {
+        let mut token = HANDLE::default();
+        if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token).is_err() {
+            return false;
+        }
+        let mut elevation = TOKEN_ELEVATION::default();
+        let mut ret_len = 0u32;
+        let ok = GetTokenInformation(
+            token,
+            TokenElevation,
+            Some(&mut elevation as *mut _ as *mut _),
+            std::mem::size_of::<TOKEN_ELEVATION>() as u32,
+            &mut ret_len,
+        )
+        .is_ok();
+        let _ = CloseHandle(token);
+        ok && elevation.TokenIsElevated != 0
+    }
+}
 
 // 提升进程权限以获取 SeDebugPrivilege
 unsafe fn enable_debug_privilege() -> Result<(), String> {
@@ -75,24 +112,11 @@ unsafe fn enable_debug_privilege() -> Result<(), String> {
     Ok(())
 }
 
-// 检查进程是否受保护（无法被修改）
-fn is_protected_process(process_name: &str) -> bool {
-    // 常见的受保护进程列表
-    const PROTECTED_PROCESSES: &[&str] = &[
-        "System",
-        "Registry",
-        "smss.exe",
-        "csrss.exe",
-        "wininit.exe",
-        "winlogon.exe",
-        "services.exe",
-        "lsass.exe",
-        "lsaiso.exe",
-        "fontdrvhost.exe",
-        "dwm.exe",
-    ];
+// S3: 白名单——只允许操作这两个进程，其余一律拒绝
+const ALLOWED_PROCESSES: &[&str] = &["SGuard64.exe", "SGuardSvc64.exe"];
 
-    PROTECTED_PROCESSES
+fn is_allowed_process(process_name: &str) -> bool {
+    ALLOWED_PROCESSES
         .iter()
         .any(|&p| p.eq_ignore_ascii_case(process_name))
 }
@@ -100,16 +124,13 @@ fn is_protected_process(process_name: &str) -> bool {
 // 检测某个进程是否正在运行
 #[tauri::command]
 fn is_process_running(process_name: &str) -> bool {
-    // 去除传入参数首尾的双引号（如果有）
-    let clean_name = process_name.trim_matches('"');
-
     // 初始化系统信息管理器
     let mut sys = System::new_all();
     // 刷新所有进程信息（必须调用，否则拿不到最新数据）
     sys.refresh_all();
 
     // 精确匹配
-    for _process in sys.processes_by_exact_name(clean_name.as_ref()) {
+    for _process in sys.processes_by_exact_name(process_name.as_ref()) {
         return true;
     }
     false
@@ -118,14 +139,11 @@ fn is_process_running(process_name: &str) -> bool {
 // 修改某个进程的cpu和亲和性
 #[tauri::command]
 fn fix_process_cpu_and_affinity(process_name: &str) -> (bool, String) {
-    // 去除传入参数首尾的双引号（如果有）
-    let clean_name = process_name.trim_matches('"');
-
-    // 检查是否为受保护的系统进程
-    if is_protected_process(clean_name) {
+    // S3: 白名单检查——只允许操作指定进程
+    if !is_allowed_process(process_name) {
         return (
             false,
-            format!("{} 是系统受保护进程，无法修改其属性", clean_name),
+            format!("{} 不在允许列表中，无法修改其属性", process_name),
         );
     }
 
@@ -154,13 +172,13 @@ fn fix_process_cpu_and_affinity(process_name: &str) -> (bool, String) {
     let mut last_error = String::from("未找到进程或所有进程操作失败");
     let mut found_process = false;
 
-    info!("开始查找进程: {}", clean_name);
-    for process in sys.processes_by_exact_name(clean_name.as_ref()) {
+    info!("开始查找进程: {}", process_name);
+    for process in sys.processes_by_exact_name(process_name.as_ref()) {
         found_process = true;
         let pid = process.pid();
         info!(
             "找到进程 {} (PID: {}), 尝试打开进程句柄",
-            clean_name,
+            process_name,
             pid.as_u32()
         );
 
@@ -172,7 +190,40 @@ fn fix_process_cpu_and_affinity(process_name: &str) -> (bool, String) {
                 pid.as_u32(),
             ) {
                 Ok(handle) => {
-                    info!("成功打开进程 {} (PID: {}) 的句柄", clean_name, pid.as_u32());
+                    info!(
+                        "成功打开进程 {} (PID: {}) 的句柄",
+                        process_name,
+                        pid.as_u32()
+                    );
+
+                    // E2: 读取并保存原始亲和性和优先级（用于 toggle 关闭时恢复）
+                    let mut original_affinity: usize = 0;
+                    let mut _system_affinity: usize = 0;
+                    if GetProcessAffinityMask(
+                        handle,
+                        &mut original_affinity,
+                        &mut _system_affinity,
+                    )
+                    .is_err()
+                    {
+                        let error_msg = format!(
+                            "读取进程 {} (PID: {}) 原始亲和性失败",
+                            process_name,
+                            pid.as_u32(),
+                        );
+                        warn!("{}", error_msg);
+                        let _ = CloseHandle(handle);
+                        last_error = error_msg;
+                        continue;
+                    }
+                    let original_priority = GetPriorityClass(handle);
+                    info!(
+                        "进程 {} (PID: {}) 原始亲和性: 0x{:X}, 原始优先级: {}",
+                        process_name,
+                        pid.as_u32(),
+                        original_affinity,
+                        original_priority
+                    );
 
                     // 计算亲和性掩码：只绑定到最后一个 CPU（例如 16 个 CPU 则绑定到 CPU15）
                     // 掩码 = 2^(cpu_cnt-1)，例如 16 个 CPU 时掩码为 0x8000
@@ -184,7 +235,7 @@ fn fix_process_cpu_and_affinity(process_name: &str) -> (bool, String) {
                         let error_code = GetLastError();
                         let error_msg = format!(
                             "设置进程 {} (PID: {}) 亲和性失败: {:?}, Windows错误码: {:?}。可能原因：进程已终止、权限不足或进程受保护。",
-                            clean_name, pid.as_u32(), e, error_code
+                            process_name, pid.as_u32(), e, error_code
                         );
                         warn!("{}", error_msg);
                         let _ = CloseHandle(handle);
@@ -193,18 +244,17 @@ fn fix_process_cpu_and_affinity(process_name: &str) -> (bool, String) {
                     }
                     info!(
                         "成功设置进程 {} (PID: {}) 的亲和性为 0x{:X}",
-                        clean_name,
+                        process_name,
                         pid.as_u32(),
                         affinity_mask
                     );
 
                     // 设置进程优先级为 Idle（空闲优先级）
-                    // 对应 PowerShell 中的 [System.Diagnostics.ProcessPriorityClass]::Idle
                     if let Err(e) = SetPriorityClass(handle, IDLE_PRIORITY_CLASS) {
                         let error_code = GetLastError();
                         let error_msg = format!(
                             "设置进程 {} (PID: {}) 优先级失败: {:?}, Windows错误码: {:?}。可能原因：进程已终止、权限不足或进程受保护。",
-                            clean_name, pid.as_u32(), e, error_code
+                            process_name, pid.as_u32(), e, error_code
                         );
                         warn!("{}", error_msg);
                         let _ = CloseHandle(handle);
@@ -213,22 +263,34 @@ fn fix_process_cpu_and_affinity(process_name: &str) -> (bool, String) {
                     }
                     info!(
                         "成功设置进程 {} (PID: {}) 的优先级为 Idle",
-                        clean_name,
+                        process_name,
                         pid.as_u32()
                     );
+
+                    // E2: 保存原始状态到全局 HashMap
+                    if let Ok(mut states) = PROCESS_STATES.lock() {
+                        states.insert(
+                            process_name.to_string(),
+                            ProcessOriginalState {
+                                pid: pid.as_u32(),
+                                affinity_mask: original_affinity,
+                                priority_class: original_priority,
+                            },
+                        );
+                    }
 
                     // 所有操作成功，关闭句柄并返回 true
                     let _ = CloseHandle(handle);
                     info!(
                         "所有操作成功完成，进程 {} (PID: {})",
-                        clean_name,
+                        process_name,
                         pid.as_u32()
                     );
                     return (
                         true,
                         format!(
                             "成功设置进程 {} (PID: {}) 的亲和性和优先级",
-                            clean_name,
+                            process_name,
                             pid.as_u32()
                         ),
                     );
@@ -238,15 +300,15 @@ fn fix_process_cpu_and_affinity(process_name: &str) -> (bool, String) {
                     let error_msg = match error_code.0 {
                         5 => format!(
                             "无法打开进程 {} (PID: {}): 访问被拒绝 (错误码 5)。请确保以管理员身份运行此程序。",
-                            clean_name, pid.as_u32()
+                            process_name, pid.as_u32()
                         ),
                         87 => format!(
                             "无法打开进程 {} (PID: {}): 参数无效 (错误码 87)。进程可能已终止。",
-                            clean_name, pid.as_u32()
+                            process_name, pid.as_u32()
                         ),
                         _ => format!(
                             "无法打开进程 {} (PID: {}): {:?}, Windows错误码: {:?}。",
-                            clean_name, pid.as_u32(), e, error_code
+                            process_name, pid.as_u32(), e, error_code
                         ),
                     };
                     warn!("{}", error_msg);
@@ -258,13 +320,128 @@ fn fix_process_cpu_and_affinity(process_name: &str) -> (bool, String) {
     }
 
     if !found_process {
-        last_error = format!("未找到进程 {}", clean_name);
+        last_error = format!("未找到进程 {}", process_name);
         warn!("{}", last_error);
     } else {
         warn!("所有进程操作失败，最后错误: {}", last_error);
     }
 
     (false, last_error)
+}
+
+// E2: 恢复进程的原始亲和性和优先级
+#[tauri::command]
+fn restore_process(process_name: &str) -> (bool, String) {
+    // 从存储中取出原始状态（同时移除条目）
+    let state = {
+        let mut states = match PROCESS_STATES.lock() {
+            Ok(s) => s,
+            Err(e) => return (false, format!("内部锁错误: {}", e)),
+        };
+        match states.remove(process_name) {
+            Some(s) => s,
+            None => {
+                info!("未找到进程 {} 的保存状态，可能未曾优化或已恢复", process_name);
+                return (true, format!("{} 无需恢复（未找到保存的原始状态）", process_name));
+            }
+        }
+    };
+
+    // 验证进程仍在运行且 PID 未变（防止 PID 被复用）
+    let mut sys = System::new_all();
+    sys.refresh_all();
+
+    let pid_valid = sys
+        .processes_by_exact_name(process_name.as_ref())
+        .any(|p| p.pid().as_u32() == state.pid);
+
+    if !pid_valid {
+        info!(
+            "进程 {} (PID: {}) 已不存在或 PID 已变，跳过恢复",
+            process_name, state.pid
+        );
+        return (
+            true,
+            format!(
+                "{} 进程已不存在 (原PID: {})，无需恢复",
+                process_name, state.pid
+            ),
+        );
+    }
+
+    unsafe {
+        if let Err(e) = enable_debug_privilege() {
+            return (false, format!("权限提升失败: {}", e));
+        }
+
+        match OpenProcess(
+            PROCESS_SET_INFORMATION | PROCESS_QUERY_INFORMATION,
+            false,
+            state.pid,
+        ) {
+            Ok(handle) => {
+                // 恢复亲和性
+                if let Err(e) = SetProcessAffinityMask(handle, state.affinity_mask) {
+                    let _ = CloseHandle(handle);
+                    return (
+                        false,
+                        format!(
+                            "恢复进程 {} (PID: {}) 亲和性失败: {:?}",
+                            process_name, state.pid, e
+                        ),
+                    );
+                }
+
+                // 恢复优先级
+                use windows::Win32::System::Threading::PROCESS_CREATION_FLAGS;
+                if let Err(e) = SetPriorityClass(handle, PROCESS_CREATION_FLAGS(state.priority_class)) {
+                    let _ = CloseHandle(handle);
+                    return (
+                        false,
+                        format!(
+                            "恢复进程 {} (PID: {}) 优先级失败: {:?}",
+                            process_name, state.pid, e
+                        ),
+                    );
+                }
+
+                let _ = CloseHandle(handle);
+                info!(
+                    "成功恢复进程 {} (PID: {}) 的原始状态: 亲和性=0x{:X}, 优先级={}",
+                    process_name, state.pid, state.affinity_mask, state.priority_class
+                );
+                (
+                    true,
+                    format!(
+                        "成功恢复进程 {} (PID: {}) 的原始亲和性和优先级",
+                        process_name, state.pid
+                    ),
+                )
+            }
+            Err(e) => {
+                let error_code = GetLastError();
+                (
+                    false,
+                    format!(
+                        "无法打开进程 {} (PID: {}): {:?}, 错误码: {:?}",
+                        process_name, state.pid, e, error_code
+                    ),
+                )
+            }
+        }
+    }
+}
+
+// 检测是否为开发模式（编译期确定，零运行时开销）
+#[tauri::command]
+fn is_dev() -> bool {
+    cfg!(debug_assertions)
+}
+
+// 返回应用版本号（来自 Cargo.toml）
+#[tauri::command]
+fn app_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -291,7 +468,6 @@ pub fn run() {
         .build();
 
     let builder = tauri::Builder::default()
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             let _ = app
                 .get_webview_window("main")
@@ -304,7 +480,11 @@ pub fn run() {
     builder
         .invoke_handler(tauri::generate_handler![
             is_process_running,
-            fix_process_cpu_and_affinity
+            fix_process_cpu_and_affinity,
+            restore_process,
+            is_elevated,
+            is_dev,
+            app_version
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
