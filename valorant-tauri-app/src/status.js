@@ -75,6 +75,7 @@ export async function toggleFeature(cardId) {
 async function initStatus(cardId) {
     const card = document.getElementById('card' + cardId);
     const status = document.getElementById('status' + cardId);
+    const toggle = document.getElementById('toggle' + cardId);
     const featureName = card.querySelector('h3').textContent;
 
     try {
@@ -85,14 +86,19 @@ async function initStatus(cardId) {
         if (isRunning) {
             status.classList.add('status-init', 'bg-blue-500');
             status.classList.remove('bg-slate-600');
+            toggle.disabled = false;
             return true;
         } else {
             status.classList.remove('status-init', 'bg-blue-500');
             status.classList.add('bg-slate-600');
+            toggle.disabled = true;
+            toggle.checked = false;
             return false;
         }
     } catch (error) {
         console.error(`检测 ${featureName} 状态失败:`, error);
+        toggle.disabled = true;
+        toggle.checked = false;
         return false;
     }
 }

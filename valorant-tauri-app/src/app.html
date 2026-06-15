@@ -40,7 +40,7 @@
                 <!-- Settings: swap with rotate effect -->
                 <li>
                     <label class="swap swap-rotate">
-                        <input type="checkbox" onclick="openSettings()" />
+                        <input type="checkbox" id="settingsBtn" />
                         <span
                             class="swap-on inline-block size-5 bg-current"
                             style="
@@ -83,7 +83,6 @@
                             type="checkbox"
                             id="toggle1"
                             class="toggle toggle-error"
-                            onchange="toggleFeature(1)"
                         />
                     </label>
                 </div>
@@ -101,7 +100,6 @@
                             type="checkbox"
                             id="toggle2"
                             class="toggle toggle-error"
-                            onchange="toggleFeature(2)"
                         />
                     </label>
                 </div>
@@ -113,7 +111,6 @@
                     <button
                         id="refreshBtn"
                         class="btn btn-soft btn-info btn-sm grow gap-2"
-                        onclick="refreshAllStatus()"
                     >
                         <span
                             class="inline-block size-[1.2em] bg-current"
@@ -128,8 +125,8 @@
                     </button>
                     <div class="divider divider-horizontal"></div>
                     <button
+                        id="clearBtn"
                         class="btn btn-soft btn-accent btn-sm grow gap-2"
-                        onclick="clearLog()"
                     >
                         <span
                             class="inline-block size-[1.2em] bg-current"

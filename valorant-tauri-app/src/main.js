@@ -18,14 +18,6 @@ function openSettings() {
     addLog('设置功能待开发...');
 }
 
-// 挂载到全局作用域（供 HTML 内联事件使用）
-window.toggleFeature = toggleFeature;
-window.clearLog = clearLog;
-window.refreshAllStatus = refreshAllStatus;
-window.toggleTheme = toggleTheme;
-window.openSettings = openSettings;
-window.dismissAdminAlert = dismissAdminAlert;
-
 // 等待页面 DOM 加载完成
 window.addEventListener('DOMContentLoaded', async () => {
     const dev = await invoke('is_dev');
@@ -69,6 +61,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (document.querySelector('#card1')) {
+        // 绑定事件（innerHTML 注入的 inline handler 在 production build 中不生效）
+        document.getElementById('refreshBtn').addEventListener('click', refreshAllStatus);
+        document.getElementById('clearBtn').addEventListener('click', clearLog);
+        document.getElementById('settingsBtn').addEventListener('change', openSettings);
+        document.getElementById('toggle1').addEventListener('change', () => toggleFeature(1));
+        document.getElementById('toggle2').addEventListener('change', () => toggleFeature(2));
+
         addLog('正在检测进程状态...');
         await checkAllStatus();
     } else {
