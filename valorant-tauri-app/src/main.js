@@ -35,7 +35,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             toastDiv.id = 'adminAlert';
             toastDiv.className = 'toast toast-center toast-bottom z-50 pointer-events-none';
             toastDiv.innerHTML = `
-                <div class="alert alert-warning shadow-lg pointer-events-auto" style="grid-template-columns: max-content 1fr max-content; grid-auto-flow: column">
+                <div class="alert alert-warning shadow-lg pointer-events-auto flex items-center gap-2">
                     <span class="inline-block size-5 bg-current shrink-0" style="mask-image: url('./static/warning.svg'); mask-size: contain; mask-repeat: no-repeat; mask-position: center"></span>
                     <span class="flex-1 text-xs text-center">请以管理员身份运行</span>
                     <button class="btn btn-ghost btn-xs btn-circle">✕</button>

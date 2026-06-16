@@ -1,6 +1,6 @@
 // 日志系统模块
 let logMessages = [];
-const MAX_LOGS = 6;
+const MAX_LOGS = 10;
 
 export function addLog(message) {
     const timestamp = new Date().toLocaleTimeString();

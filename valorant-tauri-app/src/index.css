@@ -1,10 +1,10 @@
 /* DaisyUI 主题定制 - 遵循 Tailwind/DaisyUI 最佳实践 */
+/* DaisyUI v5：CSS 变量重命名（原 v4 变量已改名/移除） */
 :root {
-  --rounded-box: 1rem;
-  --rounded-btn: 0.5rem;
-  --animation-btn: 0.25s;
-  --animation-input: 0.2s;
-  --btn-focus-scale: 0.95;
+  --radius-box: 1rem;     /* 原 v4 --rounded-box */
+  --radius-field: 0.5rem; /* 原 v4 --rounded-btn */
+  /* v5 已移除：--animation-btn / --animation-input / --btn-focus-scale
+     按钮动画行为已通过下方 .btn 规则用纯 CSS 补回 */
 }
 
 /* 自定义动画 */
@@ -61,7 +61,7 @@
 }
 
 #log::-webkit-scrollbar-thumb {
-  background-color: oklch(var(--bc) / 0.2);
+  background-color: oklch(from var(--color-base-content) l c h / 0.2);
   border-radius: 3px;
 }
 
@@ -70,4 +70,12 @@
   .navbar h1 {
     font-size: 1rem;
   }
+}
+
+/* 补回 v5 移除的按钮动画（原 --animation-btn / --btn-focus-scale） */
+.btn {
+  transition-duration: 0.25s;
+}
+.btn:active {
+  transform: scale(0.95);
 }

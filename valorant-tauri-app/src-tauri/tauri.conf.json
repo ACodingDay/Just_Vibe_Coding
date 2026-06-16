@@ -11,9 +11,9 @@
     "windows": [
       {
         "title": "valorant-app",
-        "width": 560,
+        "width": 700,
         "height": 600,
-        "minWidth": 500,
+        "minWidth": 700,
         "minHeight": 600
       }
     ],
