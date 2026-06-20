@@ -1,0 +1,211 @@
+<main class="flex flex-col h-screen bg-base-100 text-base-content" data-component="app-shell">
+    <!-- ═══ Navbar ═══ -->
+    <div class="navbar bg-base-200 px-4 shrink-0" data-component="navbar">
+        <div class="navbar-start">
+            <span class="text-lg font-bold text-error tracking-wider select-none">
+                VALORANT SGUARD
+            </span>
+        </div>
+        <div class="navbar-end">
+            <label class="swap swap-rotate cursor-pointer">
+                <input type="checkbox" value="valorant-light" class="theme-controller" />
+                <span
+                    class="swap-off inline-block size-5 bg-current"
+                    style="mask-image: url('../static/sun.svg'); mask-size: contain; mask-repeat: no-repeat; mask-position: center"
+                ></span>
+                <span
+                    class="swap-on inline-block size-5 bg-current"
+                    style="mask-image: url('../static/moon.svg'); mask-size: contain; mask-repeat: no-repeat; mask-position: center"
+                ></span>
+            </label>
+        </div>
+    </div>
+
+    <!-- ═══ Tab Bar ═══ -->
+    <div class="bg-base-200 px-4 pb-0 shrink-0" data-component="tab-bar">
+        <div role="tablist" class="tabs tabs-border">
+            <button
+                role="tab"
+                class="tab tab-active text-sm"
+                id="tabBtn1"
+                aria-selected="true"
+                data-tab="1"
+            >
+                进程管理
+            </button>
+            <button
+                role="tab"
+                class="tab text-sm"
+                id="tabBtn2"
+                aria-selected="false"
+                data-tab="2"
+            >
+                操作日志
+            </button>
+            <button
+                role="tab"
+                class="tab text-sm"
+                id="tabBtn3"
+                aria-selected="false"
+                data-tab="3"
+            >
+                监听日志
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══ Tab Content ═══ -->
+    <div class="flex-1 min-h-0 relative" data-component="tab-panels">
+        <!-- Tab 1: 进程管理 -->
+        <div id="tab-content-1" class="absolute inset-0">
+            <div class="p-5 space-y-5">
+                <!-- Section Header -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span
+                            class="inline-block size-4 bg-current shrink-0 text-info"
+                            style="mask-image: url('../static/info.svg'); mask-size: contain; mask-repeat: no-repeat; mask-position: center"
+                        ></span>
+                        <p class="text-xs text-base-content/50">
+                            检测反作弊进程，限制 CPU 亲和性与优先级
+                        </p>
+                    </div>
+                    <button
+                        id="refreshBtn2"
+                        class="btn btn-ghost btn-xs btn-circle"
+                    >
+                        <span
+                            class="inline-block size-3.5 bg-current"
+                            style="
+                                mask-image: url('../static/refresh.svg');
+                                mask-size: contain;
+                                mask-repeat: no-repeat;
+                                mask-position: center;
+                            "
+                        ></span>
+                    </button>
+                </div>
+
+                <!-- Process List -->
+                <ul class="list bg-base-200 rounded-box" data-component="process-list">
+                </ul>
+
+                <!-- Divider -->
+                <div class="divider divider-info text-xs">文件 I/O 监听</div>
+
+                <!-- Monitor List -->
+                <ul class="list bg-base-200 rounded-box" data-component="monitor-list">
+                </ul>
+            </div>
+        </div>
+
+        <!-- Tab 2: 操作日志 -->
+        <div id="tab-content-2" class="absolute inset-0 hidden">
+            <div class="p-5 flex flex-col h-full gap-4">
+                <!-- Action Button -->
+                <div class="shrink-0">
+                    <button
+                        id="clearBtn"
+                        class="btn btn-soft btn-accent btn-sm gap-2"
+                    >
+                        <span
+                            class="inline-block size-[1.2em] bg-current"
+                            style="
+                                mask-image: url('../static/trash.svg');
+                                mask-size: contain;
+                                mask-repeat: no-repeat;
+                                mask-position: center;
+                            "
+                        ></span>
+                        清空日志
+                    </button>
+                </div>
+
+                <!-- Log Display -->
+                <div
+                    id="log"
+                    class="bg-base-200 rounded-box p-4 flex-1 min-h-0 overflow-y-auto text-sm text-base-content/60"
+                ></div>
+            </div>
+        </div>
+
+        <!-- Tab 3: 监听日志 -->
+        <div id="tab-content-3" class="absolute inset-0 hidden">
+            <div class="p-5 flex flex-col h-full gap-4">
+                <!-- Action Button -->
+                <div class="shrink-0">
+                    <button
+                        id="exportMonitorBtn"
+                        class="btn btn-soft btn-info btn-sm gap-2"
+                    >
+                        <span
+                            class="inline-block size-[1.2em] bg-current"
+                            style="
+                                mask-image: url('../static/download.svg');
+                                mask-size: contain;
+                                mask-repeat: no-repeat;
+                                mask-position: center;
+                            "
+                        ></span>
+                        导出日志
+                    </button>
+                </div>
+
+                <!-- Monitor Log Table -->
+                <div id="monitorLogScroll" class="flex-1 min-h-0 overflow-auto rounded-box bg-base-200">
+                    <table class="table table-sm table-pin-rows">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>进程名</th>
+                                <th>行为</th>
+                                <th>目标路径</th>
+                                <th>时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monitorLogBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Footer ═══ -->
+    <footer
+        class="footer sm:footer-horizontal bg-base-200 text-base-content/50 items-center p-3 text-xs shrink-0"
+        data-component="footer"
+    >
+        <aside class="grid-flow-col items-center">
+            <span
+                class="inline-block size-3.5 bg-current"
+                style="
+                    mask-image: url('../static/copyright.svg');
+                    mask-size: contain;
+                    mask-repeat: no-repeat;
+                    mask-position: center;
+                "
+            ></span>
+            <p>
+                Copyright
+                <span id="footerYear"></span>
+                - MIT -
+                <span id="appVersion"></span>
+            </p>
+        </aside>
+        <nav class="grid-flow-col gap-4 place-self-end justify-self-end">
+            <a
+                href="https://github.com/ACodingDay"
+                target="_blank"
+                rel="noopener"
+                class="inline-block size-4 bg-current hover:opacity-60 transition-opacity"
+                style="
+                    mask-image: url('../static/GitHub.svg');
+                    mask-size: contain;
+                    mask-repeat: no-repeat;
+                    mask-position: center;
+                "
+            ></a>
+        </nav>
+    </footer>
+</main>

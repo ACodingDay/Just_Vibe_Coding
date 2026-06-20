@@ -1,0 +1,65 @@
+/* ═══ Valorant Dark Theme ═══ */
+:root:has(input.theme-controller[value="valorant"]:checked),
+[data-theme="valorant"] {
+    --color-base-100: #0F1923;
+    --color-base-200: #162231;
+    --color-base-300: #1C2B3D;
+    --color-base-content: #D1D5DB;
+    --color-primary: #FF4655;
+    --color-primary-content: #FFFFFF;
+    --color-secondary: #BD3944;
+    --color-secondary-content: #FFFFFF;
+    --color-accent: #FFD700;
+    --color-accent-content: #0F1923;
+    --color-neutral: #2A3F55;
+    --color-neutral-content: #D1D5DB;
+    --color-info: #3B82F6;
+    --color-info-content: #FFFFFF;
+    --color-success: #22C55E;
+    --color-success-content: #FFFFFF;
+    --color-warning: #F59E0B;
+    --color-warning-content: #0F1923;
+    --color-error: #EF4444;
+    --color-error-content: #FFFFFF;
+    --radius-selector: 0.5rem;
+    --radius-field: 0.375rem;
+    --radius-box: 0.5rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
+}
+
+/* ═══ Valorant Light Theme ═══ */
+:root:has(input.theme-controller[value="valorant-light"]:checked),
+[data-theme="valorant-light"] {
+    --color-base-100: #F8F6F3;
+    --color-base-200: #EDEAE5;
+    --color-base-300: #E0DCD6;
+    --color-base-content: #1F2937;
+    --color-primary: #BE2E3D;
+    --color-primary-content: #FFFFFF;
+    --color-secondary: #9B1B2A;
+    --color-secondary-content: #FFFFFF;
+    --color-accent: #B8860B;
+    --color-accent-content: #FFFFFF;
+    --color-neutral: #374151;
+    --color-neutral-content: #F8F6F3;
+    --color-info: #2563EB;
+    --color-info-content: #FFFFFF;
+    --color-success: #16A34A;
+    --color-success-content: #FFFFFF;
+    --color-warning: #D97706;
+    --color-warning-content: #FFFFFF;
+    --color-error: #DC2626;
+    --color-error-content: #FFFFFF;
+    --radius-selector: 0.5rem;
+    --radius-field: 0.375rem;
+    --radius-box: 0.5rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
+}
