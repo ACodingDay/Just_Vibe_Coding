@@ -21,13 +21,6 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
@@ -116,7 +109,9 @@ export function DataTable<TData, TValue>({
                         )}
                         {{
                           asc: <ArrowUpDown className="ml-1 size-3" />,
-                          desc: <ArrowUpDown className="ml-1 size-3 rotate-180" />,
+                          desc: (
+                            <ArrowUpDown className="ml-1 size-3 rotate-180" />
+                          ),
                         }[header.column.getIsSorted() as string] ?? (
                           <ArrowUpDown className="ml-1 size-3 text-muted-foreground/30" />
                         )}
@@ -187,7 +182,7 @@ function DataTablePagination<TData>({
         )}
       </div>
       <div className="flex items-center space-x-6 lg:space-x-8">
-        <div className="flex items-center space-x-2">
+        {/*<div className="flex items-center space-x-2">
           <p className="text-sm font-medium">每页行数</p>
           <Select
             value={`${table.getState().pagination.pageSize}`}
@@ -206,7 +201,7 @@ function DataTablePagination<TData>({
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </div>*/}
         <div className="flex w-[25] items-center justify-center text-sm font-medium">
           {table.getState().pagination.pageIndex + 1}
           {" / "}

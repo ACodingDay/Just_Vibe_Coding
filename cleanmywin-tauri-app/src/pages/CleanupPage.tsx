@@ -14,7 +14,9 @@ import {
   ItemDescription,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
-import { formatBytes } from "@/lib/format";
+import { formatBytes, formatBytesParts } from "@/lib/format";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import { useNumberAnimation } from "@/hooks/useNumberAnimation";
 import {
   Loader2,
   FileText,
@@ -75,6 +77,11 @@ interface CleanCompleteEvent {
 }
 
 type PageState = "idle" | "scanning" | "scanned" | "cleaning";
+
+/* ─── 稳定的格式化函数（供 AnimatedNumber useTransform 使用） ─── */
+
+const fmtCount = (v: number) => Math.round(v).toLocaleString();
+const fmtByteValue = (v: number) => v.toFixed(1);
 
 /* ─── 虚拟文件列表子组件 ─── */
 
@@ -151,6 +158,7 @@ export function CleanupPage({ autoStartScan }: CleanupPageProps) {
     total_bytes: 0,
   });
   const [pageState, setPageState] = useState<PageState>("idle");
+  const { enabled: numAnim } = useNumberAnimation();
   const [scanFiles, setScanFiles] = useState<ScanFileItem[]>([]);
   const [scanProgress, setScanProgress] = useState(0);
   const [cleanProgress, setCleanProgress] = useState(0);
@@ -369,6 +377,8 @@ export function CleanupPage({ autoStartScan }: CleanupPageProps) {
     for (const f of scanFiles) if (selectedPaths.has(f.path)) c++;
     return c;
   }, [scanFiles, selectedPaths]);
+  const scannedBytesParts = useMemo(() => formatBytesParts(totalScannedSize), [totalScannedSize]);
+  const cleanedBytesParts = useMemo(() => formatBytesParts(totalCleanedSize), [totalCleanedSize]);
 
   const toggleGroup = useCallback(
     (ruleId: string) =>
@@ -511,12 +521,14 @@ export function CleanupPage({ autoStartScan }: CleanupPageProps) {
             </ItemTitle>
             <ItemDescription>
               {isIdle && "点击开始扫描自动检测可清理的垃圾文件"}
-              {isScanning &&
-                `已发现 ${scanFiles.length} 个文件，${formatBytes(totalScannedSize)}`}
+              {isScanning && (
+                <>已发现 {numAnim ? <AnimatedNumber value={scanFiles.length} format={fmtCount} /> : scanFiles.length} 个文件，{numAnim ? <><AnimatedNumber value={scannedBytesParts.value} format={fmtByteValue} /> {scannedBytesParts.unit}</> : formatBytes(totalScannedSize)}</>
+              )}
               {isScanned &&
                 `共 ${scanFiles.length} 个文件，已勾选 ${selectedCount} 个，${formatBytes(selectedSize)} 待清理`}
-              {isCleaning &&
-                `已清理 ${cleanedFiles.length} 个文件，释放 ${formatBytes(totalCleanedSize)}`}
+              {isCleaning && (
+                <>已清理 {numAnim ? <AnimatedNumber value={cleanedFiles.length} format={fmtCount} /> : cleanedFiles.length} 个文件，释放 {numAnim ? <><AnimatedNumber value={cleanedBytesParts.value} format={fmtByteValue} /> {cleanedBytesParts.unit}</> : formatBytes(totalCleanedSize)}</>
+              )}
             </ItemDescription>
           </ItemContent>
         </Item>
@@ -579,7 +591,11 @@ export function CleanupPage({ autoStartScan }: CleanupPageProps) {
                     累计清理
                   </ItemTitle>
                   <ItemDescription className="text-3xl font-bold text-foreground">
-                    {stats.total_count.toLocaleString()}
+                    {numAnim ? (
+                      <AnimatedNumber value={stats.total_count} format={fmtCount} />
+                    ) : (
+                      stats.total_count.toLocaleString()
+                    )}
                     <span className="ml-1.5 text-sm font-normal text-muted-foreground">
                       次
                     </span>
@@ -596,7 +612,14 @@ export function CleanupPage({ autoStartScan }: CleanupPageProps) {
                     累计释放空间
                   </ItemTitle>
                   <ItemDescription className="text-3xl font-bold text-foreground">
-                    {formatBytes(stats.total_bytes)}
+                    {numAnim ? (
+                      <>
+                        <AnimatedNumber value={stats.total_bytes ? formatBytesParts(stats.total_bytes).value : 0} format={fmtByteValue} />
+                        {" "}{formatBytesParts(stats.total_bytes).unit}
+                      </>
+                    ) : (
+                      formatBytes(stats.total_bytes)
+                    )}
                   </ItemDescription>
                 </ItemContent>
               </Item>
@@ -616,7 +639,11 @@ export function CleanupPage({ autoStartScan }: CleanupPageProps) {
                 className="flex-1"
               />
               <span className="text-xs text-muted-foreground tabular-nums">
-                {Math.round(isCleaning ? smoothClean : smoothScan)}%
+                {numAnim ? (
+                  <><AnimatedNumber value={Math.round(isCleaning ? smoothClean : smoothScan)} format={fmtCount} />%</>
+                ) : (
+                  <>{Math.round(isCleaning ? smoothClean : smoothScan)}%</>
+                )}
               </span>
             </div>
             <div className="flex flex-1 flex-col min-h-0 rounded-md border">

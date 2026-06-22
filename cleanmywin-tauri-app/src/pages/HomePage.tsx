@@ -3,6 +3,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { useLottie } from "lottie-react";
 import { Button } from "@/components/ui/button";
 import { Item, ItemContent, ItemTitle } from "@/components/ui/item";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import { useNumberAnimation } from "@/hooks/useNumberAnimation";
+
+const fmtCount = (v: number) => Math.round(v).toLocaleString();
 
 function HomeLottie() {
   const [animationData, setAnimationData] = useState<object | null>(null);
@@ -47,6 +51,7 @@ interface HomePageProps {
 
 export function HomePage({ onQuickScan }: HomePageProps) {
   const [days, setDays] = useState(1);
+  const { enabled: numAnim } = useNumberAnimation();
 
   useEffect(() => {
     invoke<number>("get_protection_days")
@@ -80,7 +85,7 @@ export function HomePage({ onQuickScan }: HomePageProps) {
       </div>
       <div className="flex items-center px-10 pb-4 select-none">
         <p className="text-xs text-muted-foreground">
-          已使用 <span className="font-semibold text-primary">{days}</span> 天
+          已使用 <span className="font-semibold text-primary">{numAnim ? <AnimatedNumber value={days} format={fmtCount} /> : days}</span> 天
         </p>
       </div>
     </div>

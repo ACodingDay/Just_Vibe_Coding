@@ -5,6 +5,8 @@ import {
   PencilRuler,
   Settings,
 } from "lucide-react";
+import { useRef, useEffect, useState, useCallback } from "react";
+import { motion } from "motion/react";
 import {
   Tooltip,
   TooltipTrigger,
@@ -33,12 +35,19 @@ const dividerW = "clamp(28px, 4vw, 52px)";
 const mb = "clamp(12px, 1.5vw, 20px)";
 
 const btnBase =
-  "flex items-center justify-center transition-colors cursor-pointer";
-const active = "bg-sidebar-accent text-primary";
-const inactive =
+  "relative flex items-center justify-center transition-colors cursor-pointer";
+const activeText = "text-primary";
+const inactiveText =
   "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground";
 
-function NavButton({
+const springTransition = {
+  type: "spring" as const,
+  stiffness: 350,
+  damping: 30,
+  mass: 0.8,
+};
+
+function StandaloneButton({
   pageId,
   label,
   children,
@@ -57,7 +66,7 @@ function NavButton({
       <TooltipTrigger asChild>
         <button
           onClick={() => onPageChange(pageId)}
-          className={`${btnBase} ${isActive ? active : inactive}`}
+          className={`${btnBase} ${isActive ? `bg-sidebar-accent ${activeText}` : inactiveText}`}
           style={{ width: btnSize, height: btnSize, borderRadius: radius }}
         >
           {children}
@@ -68,42 +77,148 @@ function NavButton({
   );
 }
 
+function NavIconButton({
+  pageId,
+  label,
+  children,
+  isActive,
+  onPageChange,
+  registerRef,
+}: {
+  pageId: PageId;
+  label: string;
+  children: React.ReactNode;
+  isActive: boolean;
+  onPageChange: (page: PageId) => void;
+  registerRef: (id: PageId, el: HTMLButtonElement | null) => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          ref={(el) => registerRef(pageId, el)}
+          onClick={() => onPageChange(pageId)}
+          className={`${btnBase} ${isActive ? activeText : inactiveText}`}
+          style={{ width: btnSize, height: btnSize, borderRadius: radius }}
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** 测量激活按钮相对于 nav 容器的位置 */
+function useMeasurePosition(
+  navRef: React.RefObject<HTMLDivElement | null>,
+  buttonRefs: React.MutableRefObject<Map<string, HTMLButtonElement>>,
+  activePage: PageId,
+) {
+  const [pos, setPos] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  const measure = useCallback(() => {
+    const nav = navRef.current;
+    const btn = buttonRefs.current.get(activePage);
+    if (!nav || !btn) {
+      setPos(null);
+      return;
+    }
+    const navRect = nav.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    setPos({
+      top: btnRect.top - navRect.top,
+      left: btnRect.left - navRect.left,
+      width: btnRect.width,
+      height: btnRect.height,
+    });
+  }, [activePage, navRef, buttonRefs]);
+
+  useEffect(() => {
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [measure]);
+
+  return pos;
+}
+
 export function Sidebar({ activePage, onPageChange }: SidebarProps) {
+  const navRef = useRef<HTMLDivElement>(null);
+  const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  const registerRef = (id: PageId, el: HTMLButtonElement | null) => {
+    if (el) buttonRefs.current.set(id, el);
+    else buttonRefs.current.delete(id);
+  };
+
+  const pos = useMeasurePosition(navRef, buttonRefs, activePage);
+  const isNavActive = navItems.some((item) => item.id === activePage);
+
   return (
     <div
       className="flex min-w-18 basis-[10%] flex-col items-center bg-sidebar select-none"
       style={{ paddingTop: py, paddingBottom: py }}
     >
-      <NavButton
+      <StandaloneButton
         pageId="home"
         label="主页"
         activePage={activePage}
         onPageChange={onPageChange}
       >
         <Home style={{ width: iconSize, height: iconSize }} strokeWidth={1.8} />
-      </NavButton>
+      </StandaloneButton>
 
       <div
         className="border-t border-sidebar-border"
         style={{ width: dividerW, marginBottom: mb }}
       />
 
-      <nav className="flex flex-col" style={{ gap }}>
+      <nav
+        ref={navRef}
+        className="relative flex flex-col"
+        style={{ gap }}
+      >
+        <motion.div
+          className="absolute bg-sidebar-accent"
+          style={{
+            borderRadius: radius,
+            visibility: isNavActive && pos ? "visible" : "hidden",
+          }}
+          animate={
+            isNavActive && pos
+              ? {
+                  top: pos.top,
+                  left: pos.left,
+                  width: pos.width,
+                  height: pos.height,
+                  opacity: 1,
+                }
+              : { opacity: 0 }
+          }
+          transition={springTransition}
+        />
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
-            <NavButton
+            <NavIconButton
               key={item.id}
               pageId={item.id}
               label={item.label}
-              activePage={activePage}
+              isActive={activePage === item.id}
               onPageChange={onPageChange}
+              registerRef={registerRef}
             >
               <Icon
                 style={{ width: iconSize, height: iconSize }}
                 strokeWidth={1.8}
               />
-            </NavButton>
+            </NavIconButton>
           );
         })}
       </nav>
@@ -113,7 +228,7 @@ export function Sidebar({ activePage, onPageChange }: SidebarProps) {
           className="border-t border-sidebar-border"
           style={{ width: dividerW, marginBottom: mb }}
         />
-        <NavButton
+        <StandaloneButton
           pageId="settings"
           label="设置"
           activePage={activePage}
@@ -123,7 +238,7 @@ export function Sidebar({ activePage, onPageChange }: SidebarProps) {
             style={{ width: iconSize, height: iconSize }}
             strokeWidth={1.8}
           />
-        </NavButton>
+        </StandaloneButton>
       </div>
     </div>
   );
