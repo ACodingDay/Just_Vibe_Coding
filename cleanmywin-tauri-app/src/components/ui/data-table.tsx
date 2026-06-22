@@ -202,7 +202,7 @@ function DataTablePagination<TData>({
             </SelectContent>
           </Select>
         </div>*/}
-        <div className="flex w-[25] items-center justify-center text-sm font-medium">
+        <div className="flex items-center justify-center text-sm font-medium whitespace-nowrap min-w-[50px]">
           {table.getState().pagination.pageIndex + 1}
           {" / "}
           {table.getPageCount()}
