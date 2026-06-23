@@ -5,7 +5,7 @@ import {
   PencilRuler,
   Settings,
 } from "lucide-react";
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import {
   Tooltip,
@@ -122,28 +122,31 @@ function useMeasurePosition(
     height: number;
   } | null>(null);
 
-  const measure = useCallback(() => {
-    const nav = navRef.current;
-    const btn = buttonRefs.current.get(activePage);
-    if (!nav || !btn) {
-      setPos(null);
-      return;
-    }
-    const navRect = nav.getBoundingClientRect();
-    const btnRect = btn.getBoundingClientRect();
-    setPos({
-      top: btnRect.top - navRect.top,
-      left: btnRect.left - navRect.left,
-      width: btnRect.width,
-      height: btnRect.height,
-    });
-  }, [activePage, navRef, buttonRefs]);
-
+  // activePage 变化时重新测量并更新 resize 监听
   useEffect(() => {
+    const measure = () => {
+      const nav = navRef.current;
+      const btn = buttonRefs.current.get(activePage);
+      if (!nav || !btn) {
+        setPos(null);
+        return;
+      }
+      const navRect = nav.getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
+      setPos({
+        top: btnRect.top - navRect.top,
+        left: btnRect.left - navRect.left,
+        width: btnRect.width,
+        height: btnRect.height,
+      });
+    };
+
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [measure]);
+    // navRef / buttonRefs 是稳定 ref，不需要作为 effect 依赖
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePage]);
 
   return pos;
 }

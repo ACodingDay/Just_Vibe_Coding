@@ -15,10 +15,10 @@ export function useSmoothProgress(target: number): number {
     const targetRef = useRef(target);
     const rafRef = useRef<number>(0);
 
-    // 同步 ref 避免闭包过期
-    targetRef.current = target;
-
     useEffect(() => {
+        // 同步 ref 避免闭包过期（在 effect 中写 ref，符合 React 19 规范）
+        targetRef.current = target;
+
         // 目标归零：立即重置
         if (target === 0) {
             setDisplay(0);

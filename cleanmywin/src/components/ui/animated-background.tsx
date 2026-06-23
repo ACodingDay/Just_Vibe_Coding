@@ -92,7 +92,7 @@ export function AnimatedBackground({
             />
           )}
         </AnimatePresence>
-        <div className="z-10">{(child.props as Record<string, unknown>).children as React.ReactNode}</div>
+        <div className="contents">{(child.props as Record<string, unknown>).children as React.ReactNode}</div>
       </>,
     );
   });

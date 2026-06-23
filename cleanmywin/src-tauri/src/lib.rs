@@ -8,6 +8,7 @@ use chrono::Local;
 
 mod rules;
 mod scanner;
+mod migration;
 
 #[tauri::command]
 fn get_protection_days(app: tauri::AppHandle) -> u32 {
@@ -129,6 +130,24 @@ pub fn run() {
             start_cleanup_clean,
         ])
         .setup(|app| {
+            // ─── 旧版本数据迁移 ─────────────────────
+            let result = migration::migrate_from(
+                app.handle(),
+                migration::OLD_IDENTIFIER,
+            );
+            if result.found {
+                log::info!(
+                    "已从旧版本 ({} → {}) 迁移 {} 个设置项",
+                    migration::OLD_IDENTIFIER,
+                    app.config().identifier,
+                    result.keys_migrated,
+                );
+            }
+            if let Some(ref err) = result.error {
+                log::warn!("旧版本数据迁移失败: {err}");
+            }
+            // ───────────────────────────────────────
+
             // 在 dev/build 模式下均设置窗口图标
             let icon_bytes = include_bytes!("../icons/icon.png");
             let decoder = png::Decoder::new(std::io::Cursor::new(icon_bytes));
