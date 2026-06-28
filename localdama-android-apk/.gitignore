@@ -1,0 +1,33 @@
+# ── 从仓库根目录 .gitignore 继承 ──
+%TEMP%
+
+# ── Android 项目忽略规则 ──
+
+# IDE / 工具
+*.iml
+.gradle
+.codewhale/
+.deepseek/
+.kotlin
+.idea/
+
+# 构建产物
+**/build
+/build
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+*.dex
+
+# 本地配置
+local.properties
+
+# 日志 / 输出
+*.log
+*_output*.txt
+code-review-report.md
+
+# macOS
+.DS_Store

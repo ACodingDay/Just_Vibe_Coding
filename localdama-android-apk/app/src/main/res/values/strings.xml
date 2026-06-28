@@ -1,0 +1,125 @@
+<resources>
+    <string name="app_name">Dama</string>
+
+    <!-- ── 通用 ── -->
+    <string name="back">返回</string>
+    <string name="settings">设置</string>
+
+    <!-- ── 主页 ── -->
+    <string name="home_title">Dama</string>
+    <string name="home_brand_title">本地隐私打码</string>
+    <string name="home_brand_subtitle">智能识别 · 本地处理 · 安全无忧</string>
+    <string name="home_id_card">身份证打码</string>
+    <string name="home_id_card_desc">自动识别身份证信息</string>
+    <string name="home_sensitive_info">敏感信息打码</string>
+    <string name="home_sensitive_info_desc">手机号/地址/卡号</string>
+    <string name="home_more_features">更多功能</string>
+    <string name="home_coming_soon">即将上线</string>
+    <string name="home_ocr_test">OCR 测试</string>
+    <string name="home_ocr_test_desc">读取 test.jpg 识别文本</string>
+    <string name="ocr_test_asset_missing">测试图片缺失</string>
+
+    <!-- ── 身份证编辑 ── -->
+    <string name="id_card_edit_title">身份证打码</string>
+    <string name="id_card_select_prompt">请选择一张身份证照片</string>
+    <string name="id_card_select_image">选择图片</string>
+    <string name="id_card_reselect">重新选择</string>
+    <string name="id_card_start_detect">开始检测</string>
+
+    <!-- ── 身份证拍照 ── -->
+    <string name="id_card_camera_title">身份证拍照</string>
+    <string name="id_card_capture_front">请拍摄身份证人像面</string>
+    <string name="id_card_capture_back">请拍摄身份证国徽面</string>
+    <string name="id_card_align_hint">将卡片与框内图标对齐</string>
+    <string name="id_card_take_camera">拍照识别</string>
+    <string name="id_card_from_gallery">从相册选择</string>
+    <string name="id_card_security_badge">本地处理，保障信息安全</string>
+    <string name="id_card_camera_permission_needed">需要相机权限才能拍照识别</string>
+    <string name="id_card_capture_failed">拍照失败，请重试</string>
+
+    <!-- ── 检测结果 ── -->
+    <string name="result_title">检测结果</string>
+    <string name="result_no_regions_default">未检测到文本区域</string>
+    <string name="result_no_regions_id_card">未识别到身份证信息</string>
+    <string name="result_no_regions_sensitive">未识别到敏感信息</string>
+    <string name="result_no_regions_ocr_test">未识别到文本区域</string>
+    <string name="result_dialog_title">识别提示</string>
+    <string name="result_dialog_confirm">确定</string>
+    <string name="result_dialog_hint_default">识别失败，请确保内容清晰可见</string>
+    <string name="result_dialog_hint_id_card">身份证识别失败，确保信息清晰、边框完整</string>
+    <string name="result_dialog_hint_sensitive">敏感信息识别失败，请确保内容清晰可见</string>
+    <string name="result_dialog_hint_ocr_test">文本识别失败，请更换清晰的测试图片</string>
+    <string name="result_toggle_hint">点击区域可切换打码状态</string>
+    <string name="result_remosaic">重新打码</string>
+    <string name="result_save">保存</string>
+    <string name="result_share">分享</string>
+
+    <!-- ── 敏感信息占位 ── -->
+    <string name="sensitive_title">敏感信息打码</string>
+    <string name="sensitive_in_development">功能开发中</string>
+    <string name="sensitive_stay_tuned">敬请期待</string>
+
+    <!-- ── 设置 ── -->
+    <string name="settings_title">设置</string>
+    <string name="settings_section_appearance">外观</string>
+    <string name="settings_theme_mode">主题模式</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_theme_light">浅色模式</string>
+    <string name="settings_theme_dark">深色模式</string>
+    <string name="settings_theme_dialog_title">选择主题模式</string>
+    <string name="settings_theme_color">主题配色</string>
+    <string name="settings_theme_color_desc">选择应用主题配色</string>
+    <string name="settings_theme_color_classic">经典黑白</string>
+    <string name="settings_theme_color_tech_blue">科技蓝</string>
+    <string name="settings_theme_color_fresh_green">清新绿</string>
+    <string name="settings_theme_color_dialog_title">选择主题配色</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_desc">跟随系统</string>
+    <string name="settings_fullscreen">隐藏状态栏</string>
+    <string name="settings_fullscreen_desc">全屏显示，隐藏顶部时间和信号</string>
+    <string name="settings_section_mosaic">打码</string>
+    <string name="settings_mosaic_style">打码方案</string>
+    <string name="settings_mosaic_style_fill_white">纯白填充</string>
+    <string name="settings_mosaic_style_blur">高斯模糊</string>
+    <string name="settings_mosaic_style_pixelate">像素马赛克</string>
+    <string name="settings_mosaic_style_hint">点击展开选择</string>
+    <string name="settings_mosaic_strength">打码强度</string>
+    <string name="settings_mosaic_fine">细</string>
+    <string name="settings_mosaic_medium">中</string>
+    <string name="settings_mosaic_coarse">粗</string>
+    <string name="settings_mosaic_label_fine">精细</string>
+    <string name="settings_mosaic_label_coarse">粗糙</string>
+    <string name="settings_section_about">关于</string>
+    <string name="settings_version">版本号</string>
+    <string name="settings_version_value">1.0.0</string>
+    <string name="settings_license">开源协议</string>
+    <string name="settings_license_value">MIT License</string>
+    <string name="settings_cancel">取消</string>
+
+    <!-- ── 相机页面 ── -->
+    <string name="id_card_side_front">人像面</string>
+    <string name="id_card_side_back">国徽面</string>
+    <string name="id_card_flash">闪光灯</string>
+    <string name="id_card_detecting">识别中…</string>
+    <string name="id_card_detect_failed">识别失败，请重试</string>
+    <string name="id_card_photo_failed">拍照失败，请重试</string>
+    <string name="id_card_camera_rationale">需要相机权限来扫描身份证并进行敏感信息打码。请允许访问相机以继续。</string>
+    <string name="id_card_camera_allow">允许</string>
+    <string name="id_card_camera_go_settings">去设置开启相机权限</string>
+    <string name="id_card_toggle_orientation">切换方向</string>
+
+    <!-- ── 主页加载遮罩 ── -->
+    <string name="home_detecting">识别中…</string>
+    <string name="home_detecting_cd">正在识别</string>
+
+    <!-- ── 打码风格标签 ── -->
+    <string name="mosaic_style_fill_white">纯白填充</string>
+    <string name="mosaic_style_blur">高斯模糊</string>
+    <string name="mosaic_style_pixelate">像素马赛克</string>
+
+    <!-- ── 图片保存 / 分享 ── -->
+    <string name="save_success">已保存到相册</string>
+    <string name="save_failed">保存失败: %1$s</string>
+    <string name="share_chooser_title">分享图片</string>
+    <string name="share_failed">分享失败: %1$s</string>
+</resources>
