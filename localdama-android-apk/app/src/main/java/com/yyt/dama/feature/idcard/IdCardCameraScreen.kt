@@ -145,6 +145,8 @@ private fun CameraScreenContent(
     // ── 裁剪预览确认状态 ──
     var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var showPreview by remember { mutableStateOf(false) }
+    // 拍照瞬间捕获的正反面，供预览确认后调用 runTemplateDetection 使用
+    var capturedSide by remember { mutableStateOf(CardSide.FRONT) }
 
     // ── Snackbar 错误提示 ──
     val snackbarHostState = remember { SnackbarHostState() }
@@ -245,7 +247,8 @@ private fun CameraScreenContent(
             if (isCapturing || isProcessing || !cameraReady) return
             isCapturing = true
 
-//            val capturedSide = currentSide  // 捕获当前面
+            // 拍照瞬间捕获当前面，避免后续 UI 切换导致 side 错位
+            capturedSide = currentSide
             val capturedOverlay = overlayPercentRect  // 捕获当前取景框位置
             val capturedViewRatio = viewRatio
 
@@ -305,7 +308,7 @@ private fun CameraScreenContent(
                     scope.launch {
                         try {
                             val regions = withContext(Dispatchers.IO) {
-                                runTemplateDetection(context, bmp)
+                                runTemplateDetection(context, bmp, side = capturedSide)
                             }
                             isProcessing = false
                             previewBitmap = null

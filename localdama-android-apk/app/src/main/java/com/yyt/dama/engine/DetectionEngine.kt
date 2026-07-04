@@ -16,6 +16,7 @@ import kotlin.math.roundToInt
  * 身份证检测引擎。
  * 根据卡片在屏幕上的 overlay 位置，裁剪原图 → 全图检测 → 模板区域过滤。
  *
+ * @param side 正反面，决定使用哪套模板过滤（默认正面）
  * @return Pair(裁剪后的原图副本, 过滤后的检测区域列表)
  */
 fun runDetection(
@@ -24,7 +25,8 @@ fun runDetection(
     cardOffsetY: Float,
     screenW: Float,
     cardH: Float,
-    orientation: CardOrientation = CardOrientation.LANDSCAPE
+    orientation: CardOrientation = CardOrientation.LANDSCAPE,
+    side: CardSide = CardSide.FRONT
 ): Pair<Bitmap, List<Rect>> {
     val imgW = original.width
     val imgH = original.height
@@ -42,8 +44,8 @@ fun runDetection(
     val allBoxes = detector.detect(cropped)
     detector.close()
 
-    // 模板过滤（排除照片区域，照片不需要 OCR 文本匹配）
-    val regionRects = templateFor(orientation).filter { !it.isDashed }.map { it.toRect(imgW, cropH) }
+    // 模板过滤（排除照片/国徽区域，这些区域不需要 OCR 文本匹配）
+    val regionRects = templateFor(orientation, side).filter { !it.isDashed }.map { it.toRect(imgW, cropH) }
     val filtered = allBoxes.filter { box ->
         regionRects.any { r -> overlapRatio(box, r) > 0.15f }
     }
@@ -132,32 +134,37 @@ fun runDualSideDetection(
 /**
  * 模板驱动的区域 OCR 检测。
  *
- * 将身份证模板的文本字段区域映射到原图上，
- * 每个区域向外扩展一定比例作为"搜索区"，
- * 仅在搜索区内执行 OCR，用实际检测到的文本框做打码。
+ * 流程：
+ *   1. 用模板字段区域 + 小比例扩展（20%）作为搜索区，缩小 OCR 范围
+ *   2. 在搜索区内做 OCR，得到的原始框即真实文字位置
+ *   3. 对 OCR 原始框做 20% 像素扩展 → 直接作为打码区域
  *
- * 模板仅用于缩小搜索范围，不直接决定打码区域，
- * 从而容忍拍照时的位置偏移和轻微旋转。
+ * 模板仅用于缩小搜索范围，不直接决定打码区域。
+ * 最终打码区域以 OCR 实际检测到的文本位置为准。
  *
  * @param context       用于加载 ONNX 模型
  * @param original      原始图片（不会被修改）
  * @param orientation   模板方向（默认横向）
- * @param searchPadding 搜索区扩展比例，0.4 表示四周各扩展模板宽/高的 40%
+ * @param side          正反面，决定使用哪套模板（默认正面）
+ * @param searchPadding 搜索区扩展比例，0.2 表示四周各扩展模板宽/高的 20%
+ * @param finalExpand   最终打码区域扩展比例，0.2 表示四周各扩展 OCR 框宽/高的 20%
  * @return 检测到的打码区域列表（原图坐标）
  */
 fun runTemplateDetection(
     context: Context,
     original: Bitmap,
     orientation: CardOrientation = CardOrientation.LANDSCAPE,
-    searchPadding: Float = 0.4f
+    side: CardSide = CardSide.FRONT,
+    searchPadding: Float = 0.2f,
+    finalExpand: Float = 0.2f
 ): List<Rect> {
     val imgW = original.width
     val imgH = original.height
 
-    // 排除照片字段（isDashed），只保留文本区域
-    val textFields = templateFor(orientation).filter { !it.isDashed }
+    val textFields = templateFor(orientation, side).filter { !it.isDashed }
     Log.d("TemplateDetection",
-        "原图 ${imgW}x${imgH}，模板文本区域 ${textFields.size} 个，搜索扩展 ${searchPadding * 100}%")
+        "原图 ${imgW}x${imgH}，模板文本区域 ${textFields.size} 个，" +
+        "搜索扩展 ${searchPadding * 100}%，最终扩展 ${finalExpand * 100}%")
 
     val detector = OcrDetector(context)
     val allRegions = mutableListOf<Rect>()
@@ -166,7 +173,7 @@ fun runTemplateDetection(
         for (field in textFields) {
             val region = field.toRect(imgW, imgH)
 
-            // 扩展为搜索区，容忍拍照偏移
+            // 用较小比例扩展搜索区，避免相邻字段重叠
             val searchZone = expandRegion(region, imgW, imgH, searchPadding)
             Log.d("TemplateDetection",
                 "→ 字段 [${field.label}] 模板 $region → 搜索区 $searchZone")
@@ -174,10 +181,28 @@ fun runTemplateDetection(
             // 在搜索区内做 OCR
             val boxes = detector.detectInRegion(original, searchZone)
 
-            // 颜色过滤 + 合并 + 扩展
-            val processed = MosaicRegions.process(boxes, original)
+            // OCR 原始框直接扩展作为打码区域
+            val expanded = expandOcrBoxes(boxes, original, finalExpand)
 
-            allRegions.addAll(processed)
+            if (expanded.isEmpty()) {
+                val padX = (region.width() * 0.15f).toInt().coerceAtLeast(4)
+                val padY = (region.height() * 0.15f).toInt().coerceAtLeast(4)
+                val fallback = Rect(
+                    max(0, region.left - padX),
+                    max(0, region.top - padY),
+                    min(imgW, region.right + padX),
+                    min(imgH, region.bottom + padY)
+                )
+                allRegions.add(fallback)
+                Log.d("TemplateDetection",
+                    "  [${field.label}] OCR=0框 → 兜底模板区域 $fallback")
+            } else {
+                Log.d("TemplateDetection",
+                    "  [${field.label}] OCR=${boxes.size}框, " +
+                    "各框=${boxes.map { "$it" }}, " +
+                    "最终=${expanded.size}区域")
+                allRegions.addAll(expanded)
+            }
         }
     } finally {
         detector.close()
@@ -188,12 +213,65 @@ fun runTemplateDetection(
 }
 
 /**
- * 将矩形向四周扩展指定比例，并夹紧到图片边界。
+ * 对 OCR 原始框按行分组后统一扩展高度。
+ *
+ * 同一行内的文本框（垂直重叠）共享该行最大框高度作为扩展基准，
+ * 避免中文框高、数字框矮导致的打码不完整。
+ *
+ * @param boxes   OCR 检测到的原始文本框
+ * @param bitmap  原始图片
+ * @param expand  扩展比例，0.2 表示上下各扩展行高度的 20%
+ */
+private fun expandOcrBoxes(
+    boxes: List<Rect>,
+    bitmap: Bitmap,
+    expand: Float
+): List<Rect> {
+    if (boxes.isEmpty()) return emptyList()
+    val imgW = bitmap.width
+    val imgH = bitmap.height
+
+    // 按行分组：两个框垂直重叠则为同一行
+    val rows = mutableListOf<MutableList<Rect>>()
+    val sorted = boxes.sortedBy { it.top }
+    for (box in sorted) {
+        val existingRow = rows.find { row ->
+            row.any { min(it.bottom, box.bottom) - max(it.top, box.top) > 0 }
+        }
+        if (existingRow != null) {
+            existingRow.add(box)
+        } else {
+            rows.add(mutableListOf(box))
+        }
+    }
+
+    return rows.flatMap { row ->
+        val rowHeight = row.maxOf { it.height() }
+        val padY = (rowHeight * expand).toInt().coerceAtLeast(2)
+        val padX = (imgW * 0.02f).toInt().coerceAtLeast(4)
+        Log.d("TemplateDetection",
+            "  行分组: ${row.size}框, 最大高度=$rowHeight, padY=$padY, padX=$padX, 框=${row.map { "$it" }}")
+        row.map { box ->
+            val expanded = Rect(
+                max(0, box.left - padX),
+                max(0, box.top - padY),
+                min(imgW, box.right + padX),
+                min(imgH, box.bottom + padY)
+            )
+            Log.d("TemplateDetection",
+                "    框 $box + padX=$padX padY=$padY → $expanded")
+            expanded
+        }
+    }
+}
+
+/**
+ * 将矩形向上下右扩展指定比例，左边界保持不变（避免超出身份证边缘）。
  *
  * @param region  原始矩形
  * @param imgW    图片宽度
  * @param imgH    图片高度
- * @param padding 扩展比例（0.4 = 四周各扩展宽/高的 40%）
+ * @param padding 扩展比例（0.2 = 上下右各扩展宽/高的 20%）
  */
 private fun expandRegion(
     region: Rect, imgW: Int, imgH: Int, padding: Float
@@ -201,7 +279,7 @@ private fun expandRegion(
     val padX = (region.width() * padding).toInt()
     val padY = (region.height() * padding).toInt()
     return Rect(
-        max(0, region.left - padX),
+        region.left,  // 左边界不扩展
         max(0, region.top - padY),
         min(imgW, region.right + padX),
         min(imgH, region.bottom + padY)

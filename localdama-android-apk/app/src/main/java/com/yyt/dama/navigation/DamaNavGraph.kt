@@ -157,6 +157,25 @@ fun DamaNavGraph(
                         }
                     )
                 },
+                onTestLongClick = {
+                    homeViewModel.runDebugDetection(
+                        onSuccess = { debugBitmap ->
+                            DetectionRepository.setResult(
+                                debugBitmap, emptyList(), DetectionSource.OCR_TEST
+                            )
+                            navController.navigate(Route.Result.path)
+                        },
+                        onError = { e ->
+                            Log.w(TAG, "Debug detection failed: ${e.message}")
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = context.getString(R.string.ocr_test_asset_missing),
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
+                        }
+                    )
+                },
                 onSettingsClick = {
 //                    Log.d(TAG, "click → Settings")
                     navController.navigate(Route.Settings.path)

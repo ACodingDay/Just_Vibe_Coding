@@ -46,17 +46,19 @@ const val CARD_ASPECT_PORTRAIT = 358f / 441f
 /**
  * 横向（默认）：标准身份证方向。
  *
- *   左列 = 文字区（姓名、性别民族、出生、住址）
- *   右侧 = 人像照片
- *   底部 = 公民身份号码
+ * 模板坐标根据 OCR 实际检测框的 y 范围反推：
+ *   姓名 89~118, 性别 173~194, 出生 250~270,
+ *   住址 L1 258~271+L2 333~353+L3 384~405（三行连续合并）, 号码 536~555
  */
 val landscapeTemplate = listOf(
-    IdCardField("姓名",         0.04f, 0.06f, 0.40f, 0.10f),
-    IdCardField("性别 / 民族",  0.04f, 0.20f, 0.30f, 0.08f),
-    IdCardField("出生日期",     0.04f, 0.32f, 0.42f, 0.08f),
-    IdCardField("住址",         0.04f, 0.44f, 0.42f, 0.28f),
-    IdCardField("照片",         0.60f, 0.06f, 0.36f, 0.50f, isDashed = true),
-    IdCardField("身份号码",     0.04f, 0.80f, 0.88f, 0.12f),
+    IdCardField("姓名",         0.05f, 0.13f, 0.40f, 0.06f),
+    IdCardField("性别 / 民族",  0.05f, 0.26f, 0.38f, 0.05f),
+    // 出生: OCR 框 y=250~270
+    IdCardField("出生日期",     0.05f, 0.38f, 0.48f, 0.05f),
+    // 住址: OCR 框 y=333~404(此轮), 上下各冗余一行 → y 覆盖 259~434
+    IdCardField("住址",         0.05f, 0.51f, 0.50f, 0.22f),
+    IdCardField("照片",         0.58f, 0.07f, 0.38f, 0.50f, isDashed = true),
+    IdCardField("身份号码",     0.05f, 0.83f, 0.88f, 0.05f),
 )
 
 /**
@@ -68,12 +70,12 @@ val landscapeTemplate = listOf(
  * 视觉：照片在上，文字区在下，身份号码在底部。
  */
 val portraitTemplate = listOf(
-    IdCardField("姓名",         0.06f, 0.54f, 0.10f, 0.40f),
-    IdCardField("性别 / 民族",  0.20f, 0.66f, 0.08f, 0.30f),
-    IdCardField("出生日期",     0.32f, 0.54f, 0.08f, 0.42f),
-    IdCardField("住址",         0.44f, 0.54f, 0.28f, 0.42f),
-    IdCardField("照片",         0.06f, 0.04f, 0.50f, 0.36f, isDashed = true),
-    IdCardField("身份号码",     0.80f, 0.04f, 0.12f, 0.88f),
+    IdCardField("姓名",         0.13f, 0.55f, 0.06f, 0.40f),
+    IdCardField("性别 / 民族",  0.26f, 0.62f, 0.05f, 0.38f),
+    IdCardField("出生日期",     0.38f, 0.52f, 0.05f, 0.48f),
+    IdCardField("住址",         0.51f, 0.50f, 0.22f, 0.50f),
+    IdCardField("照片",         0.07f, 0.04f, 0.50f, 0.38f, isDashed = true),
+    IdCardField("身份号码",     0.83f, 0.05f, 0.05f, 0.88f),
 )
 
 // ─────────────────────────────────────────────────────

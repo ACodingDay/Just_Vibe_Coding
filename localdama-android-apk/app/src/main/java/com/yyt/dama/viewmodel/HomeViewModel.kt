@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.yyt.dama.engine.TemplateDebugVisualizer
 import com.yyt.dama.engine.runTemplateDetection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,6 +75,52 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 onError(e)
             } finally {
 //                Log.d("Dama/HomeVM", "runTestDetection finally: isTestRunning → false")
+                _isTestRunning.value = false
+            }
+        }
+    }
+
+    fun runDebugDetection(
+        onSuccess: (bitmap: android.graphics.Bitmap) -> Unit,
+        onError: (Exception) -> Unit = {}
+    ) {
+        if (_isTestRunning.value) return
+        _isTestRunning.value = true
+        viewModelScope.launch {
+            try {
+                val assetExists = withContext(Dispatchers.IO) {
+                    "test.jpg" in (ctx.assets.list("") ?: emptyArray())
+                }
+                if (!assetExists) {
+                    onError(java.io.FileNotFoundException("test.jpg (asset missing)"))
+                    return@launch
+                }
+
+                val bitmap = withContext(Dispatchers.IO) {
+                    val bytes = ctx.assets.open("test.jpg").readBytes()
+                    val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+                    val m = maxOf(opts.outWidth, opts.outHeight)
+                    opts.inSampleSize = if (m > 2048) {
+                        var s = 1; while (s * 2048 < m) s *= 2; s
+                    } else 1
+                    opts.inJustDecodeBounds = false
+                    if (android.os.Build.VERSION.SDK_INT >= 33) {
+                        opts.inPreferredColorSpace =
+                            android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
+                    }
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)!!
+                }
+
+                val debugBitmap = withContext(Dispatchers.IO) {
+                    TemplateDebugVisualizer.runDebugDetection(ctx, bitmap)
+                }
+
+                bitmap.recycle()
+                onSuccess(debugBitmap)
+            } catch (e: Exception) {
+                onError(e)
+            } finally {
                 _isTestRunning.value = false
             }
         }

@@ -50,8 +50,8 @@ object MosaicRegions {
 
     // ── 扩展参数 ──────────────────────────────────
 
-    /** 默认扩展比例（相对原图尺寸） */
-    private const val DEFAULT_EXPAND_RATIO = 0.01f
+    /** 默认扩展比例（相对原图尺寸），2% 保证打码完全覆盖文字边缘 */
+    private const val DEFAULT_EXPAND_RATIO = 0.02f
 
     // ═══════════════════════════════════════════════
     //  公开 API

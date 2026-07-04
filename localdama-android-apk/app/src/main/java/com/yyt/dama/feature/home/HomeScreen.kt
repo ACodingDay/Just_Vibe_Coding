@@ -11,6 +11,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -68,6 +69,7 @@ fun HomeScreen(
     onIdCardClick: () -> Unit,
     onSensitiveInfoClick: () -> Unit,
     onTestClick: () -> Unit,
+    onTestLongClick: () -> Unit = {},
     onSettingsClick: () -> Unit,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
@@ -211,7 +213,8 @@ fun HomeScreen(
                             subtitle = stringResource(R.string.home_ocr_test_desc),
                             enabled = true,
                             isDarkTheme = isDarkTheme,
-                            onClick = onTestClick
+                            onClick = onTestClick,
+                            onLongClick = onTestLongClick
                         )
                         StaggeredFeatureCard(
                             modifier = Modifier.weight(1f),
@@ -270,7 +273,8 @@ private fun StaggeredFeatureCard(
     subtitle: String,
     enabled: Boolean,
     isDarkTheme: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     val visibleState = remember { MutableTransitionState(false) }
     LaunchedEffect(Unit) {
@@ -297,7 +301,8 @@ private fun StaggeredFeatureCard(
             accentIndex = index,
             enabled = enabled,
             isDarkTheme = isDarkTheme,
-            onClick = onClick
+            onClick = onClick,
+            onLongClick = onLongClick
         )
     }
 }
@@ -310,22 +315,31 @@ private fun FeatureCard(
     accentIndex: Int,
     enabled: Boolean,
     isDarkTheme: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     val alpha = if (enabled) 1f else 0.4f
     val accentColor = accentColorFor(accentIndex, isDarkTheme)
 
+    val clickModifier = if (onLongClick != null) {
+        Modifier.combinedClickable(
+            onClick = { if (enabled) onClick() },
+            onLongClick = { if (enabled) onLongClick() }
+        )
+    } else {
+        Modifier.clickable { if (enabled) onClick() }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(155.dp),
+            .height(155.dp)
+            .then(clickModifier),
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        onClick = onClick,
-        enabled = enabled
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
