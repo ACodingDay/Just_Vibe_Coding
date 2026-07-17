@@ -1,4 +1,7 @@
 # Temp / cache directories
 %TEMP%
 
+# WorkBuddy 工作目录（缓存/记忆，不需要提交）
+.workbuddy/
+
 # This repo only contains cleanmywin-tauri-app
