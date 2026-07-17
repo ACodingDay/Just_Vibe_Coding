@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.yyt.dama.R
 import com.yyt.dama.engine.MosaicStyle
+import com.yyt.dama.ocr.OcrModelOption
 import com.yyt.dama.ui.components.DamaTopBar
 import com.yyt.dama.ui.theme.ThemeMode
 import com.yyt.dama.ui.theme.ThemeColor
@@ -105,6 +106,7 @@ fun SettingsScreen(
     val currentThemeColor by mainViewModel.themeColor.collectAsState()
     val currentFullscreen by mainViewModel.fullscreen.collectAsState()
     val mosaicStrength by settingsViewModel.mosaicStrength.collectAsState()
+    val ocrModelOption by settingsViewModel.ocrModelOption.collectAsState()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -277,6 +279,35 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // ================================================================
+            // Section: OCR
+            // ================================================================
+            SectionHeader(stringResource(R.string.settings_section_ocr))
+            Spacer(Modifier.height(8.dp))
+
+            SettingsCard {
+                var showOcrModelDialog by remember { mutableStateOf(false) }
+                SettingsRow(
+                    icon = Icons.Default.DocumentScanner,
+                    title = stringResource(R.string.settings_ocr_model),
+                    subtitle = ocrModelOption.displayName,
+                    onClick = { showOcrModelDialog = true }
+                )
+
+                if (showOcrModelDialog) {
+                    OcrModelDialog(
+                        currentModel = ocrModelOption,
+                        onSelect = { model ->
+                            settingsViewModel.setOcrModelOption(model)
+                            showOcrModelDialog = false
+                        },
+                        onDismiss = { showOcrModelDialog = false }
+                    )
                 }
             }
 
@@ -556,6 +587,69 @@ private fun ThemeColorDialog(
                             )
                             Spacer(Modifier.weight(1f))
                             if (color == currentColor) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
+        }
+    )
+}
+
+@Composable
+private fun OcrModelDialog(
+    currentModel: OcrModelOption,
+    onSelect: (OcrModelOption) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_ocr_model_dialog_title)) },
+        text = {
+            Column {
+                OcrModelOption.entries.forEach { model ->
+                    Surface(
+                        onClick = { onSelect(model) },
+                        shape = MaterialTheme.shapes.medium,
+                        color = if (model == currentModel)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.surface
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp, horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = model == currentModel,
+                                onClick = { onSelect(model) }
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = model.displayName,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Text(
+                                    text = model.modelPath,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(Modifier.weight(1f))
+                            if (model == currentModel) {
                                 Icon(
                                     Icons.Default.Check,
                                     contentDescription = null,

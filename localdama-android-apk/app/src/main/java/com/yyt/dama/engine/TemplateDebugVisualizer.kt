@@ -8,7 +8,6 @@ import android.graphics.Rect
 import android.util.Log
 import com.yyt.dama.feature.idcard.CardOrientation
 import com.yyt.dama.feature.idcard.CardSide
-import com.yyt.dama.feature.idcard.IdCardField
 import com.yyt.dama.feature.idcard.templateFor
 import com.yyt.dama.feature.idcard.toRect
 import kotlin.math.abs
@@ -27,6 +26,9 @@ import kotlin.math.min
  *   红色框   = OCR 原始检测框
  *   蓝色框   = MosaicRegions 处理后的最终打码区域
  *   白色文字 = 字段标签
+ *
+ * 阶段五-16 清理：删除了 `runDebugDetection()`（逻辑已由 `OcrFacadeImpl` 统一编排），
+ * 删除了重复的 `expandRawBoxes`/`expandRegionPublic`（改用本文件的公共 `expandRegion`）。
  */
 object TemplateDebugVisualizer {
 
@@ -35,10 +37,12 @@ object TemplateDebugVisualizer {
     /**
      * 生成一张调试可视化图。
      *
+     * 由 `OcrFacadeImpl` 在 `DetectionRequest.debug = true` 时调用。
+     *
      * @param original      原始图片
      * @param orientation   模板方向
      * @param side          正反面
-     * @param searchPadding 搜索区扩展比例（与 runTemplateDetection 一致）
+     * @param searchPadding 搜索区扩展比例（与 Facade 检测时一致）
      * @param rawOcrBoxes   每个字段搜索区内的 OCR 原始检测框（原图坐标）
      * @param finalRegions  最终打码区域
      * @return 带调试标注的图片副本
@@ -70,7 +74,8 @@ object TemplateDebugVisualizer {
         }
         for (field in templateFields.filter { !it.isDashed }) {
             val region = field.toRect(imgW, imgH)
-            val searchZone = expandRegionPublic(region, imgW, imgH, searchPadding)
+            // 复用 DetectionEngine 的公共 expandRegion（阶段五-16 消除重复实现）
+            val searchZone = expandRegion(region, imgW, imgH, searchPadding)
             canvas.drawRect(searchZone, searchPaint)
             canvas.drawRect(searchZone, searchBorderPaint)
         }
@@ -168,123 +173,5 @@ object TemplateDebugVisualizer {
                 "图${imgW}x${imgH}")
 
         return result
-    }
-
-    /**
-     * 调试用：运行模板检测并返回可视化结果图。
-     *
-     * 与 runTemplateDetection 使用相同的检测流程：
-     *   1. 模板字段区域 + 20% 搜索扩展 → 缩小 OCR 范围
-     *   2. OCR 原始框 + 20% 像素扩展 → 最终打码区域
-     */
-    fun runDebugDetection(
-        context: android.content.Context,
-        original: Bitmap,
-        orientation: CardOrientation = CardOrientation.LANDSCAPE,
-        side: CardSide = CardSide.FRONT,
-        searchPadding: Float = 0.2f,
-        finalExpand: Float = 0.2f
-    ): Bitmap {
-        val imgW = original.width
-        val imgH = original.height
-
-        val textFields = templateFor(orientation, side).filter { !it.isDashed }
-        Log.d(TAG, "调试检测: ${imgW}x${imgH}, ${textFields.size}个文本字段, " +
-                "搜索扩展${searchPadding * 100}%, 最终扩展${finalExpand * 100}%")
-
-        val detector = OcrDetector(context)
-        val allRawBoxes = mutableListOf<Rect>()
-        val allFinalRegions = mutableListOf<Rect>()
-
-        try {
-            for (field in textFields) {
-                val region = field.toRect(imgW, imgH)
-                val searchZone = expandRegionPublic(region, imgW, imgH, searchPadding)
-
-                Log.d(TAG, "→ [${field.label}] 模板=$region 搜索区=$searchZone")
-
-                val boxes = detector.detectInRegion(original, searchZone)
-                allRawBoxes.addAll(boxes)
-
-                // 计算该字段所有 OCR 框的合并边界（像素坐标 + 百分比坐标）
-                val mergedBounds = if (boxes.isEmpty()) Rect()
-                else Rect(
-                    boxes.minOf { it.left }, boxes.minOf { it.top },
-                    boxes.maxOf { it.right }, boxes.maxOf { it.bottom }
-                )
-                val pctStr = if (boxes.isNotEmpty()) {
-                    "pct=(%.3f,%.3f,%.3f,%.3f)".format(
-                        mergedBounds.left.toFloat() / imgW,
-                        mergedBounds.top.toFloat() / imgH,
-                        (mergedBounds.right - mergedBounds.left).toFloat() / imgW,
-                        (mergedBounds.bottom - mergedBounds.top).toFloat() / imgH
-                    )
-                } else { "" }
-
-                Log.d(TAG, "  [${field.label}] OCR=${boxes.size}框, " +
-                        "合并边界=$mergedBounds $pctStr, " +
-                        "各框=${boxes.map { "$it" }}")
-
-                // OCR 原始框直接扩展作为打码区域（与 runTemplateDetection 一致）
-                val expanded = expandRawBoxes(boxes, imgW, imgH, finalExpand)
-                allFinalRegions.addAll(expanded)
-
-                Log.d(TAG, "  [${field.label}] OCR=${boxes.size}框 → 最终=${expanded.size}区域")
-            }
-        } finally {
-            detector.close()
-        }
-
-        Log.d(TAG, "总计: OCR原始${allRawBoxes.size}框, 最终${allFinalRegions.size}区域")
-
-        return visualize(
-            original, orientation, side, searchPadding,
-            allRawBoxes, allFinalRegions
-        )
-    }
-
-    /** 对 OCR 原始框按行分组后统一扩展高度（与 DetectionEngine.expandOcrBoxes 一致） */
-    private fun expandRawBoxes(
-        boxes: List<Rect>, imgW: Int, imgH: Int, expand: Float
-    ): List<Rect> {
-        if (boxes.isEmpty()) return emptyList()
-
-        val rows = mutableListOf<MutableList<Rect>>()
-        val sorted = boxes.sortedBy { it.top }
-        for (box in sorted) {
-            val existingRow = rows.find { row ->
-                row.any { min(it.bottom, box.bottom) - max(it.top, box.top) > 0 }
-            }
-            if (existingRow != null) existingRow.add(box)
-            else rows.add(mutableListOf(box))
-        }
-
-        return rows.flatMap { row ->
-            val rowHeight = row.maxOf { it.height() }
-            val padY = (rowHeight * expand).toInt().coerceAtLeast(2)
-            val padX = (imgW * 0.02f).toInt().coerceAtLeast(4)
-            row.map { box ->
-                Rect(
-                    max(0, box.left - padX),
-                    max(0, box.top - padY),
-                    min(imgW, box.right + padX),
-                    min(imgH, box.bottom + padY)
-                )
-            }
-        }
-    }
-
-    /** 搜索区扩展：左边界保持不变，上下右扩展（与 DetectionEngine.expandRegion 一致） */
-    private fun expandRegionPublic(
-        region: Rect, imgW: Int, imgH: Int, padding: Float
-    ): Rect {
-        val padX = (region.width() * padding).toInt()
-        val padY = (region.height() * padding).toInt()
-        return Rect(
-            region.left,
-            max(0, region.top - padY),
-            min(imgW, region.right + padX),
-            min(imgH, region.bottom + padY)
-        )
     }
 }

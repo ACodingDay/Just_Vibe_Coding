@@ -3,6 +3,7 @@ package com.yyt.dama.data
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import com.yyt.dama.ocr.OcrModelOption
 import com.yyt.dama.feature.settings.MosaicStyleOption
 import com.yyt.dama.ui.theme.ThemeColor
 import com.yyt.dama.ui.theme.ThemeMode
@@ -67,6 +68,17 @@ class SettingsRepository(context: Context) {
         prefs.edit { putInt(KEY_MOSAIC_STYLE, option.ordinal) }
     }
 
+    // ── OCR Model ──
+
+    fun loadOcrModelOption(): OcrModelOption {
+        val ordinal = prefs.getInt(KEY_OCR_MODEL, OcrModelOption.PP_OCR_V5.ordinal)
+        return OcrModelOption.entries.getOrElse(ordinal) { OcrModelOption.PP_OCR_V5 }
+    }
+
+    fun saveOcrModelOption(option: OcrModelOption) {
+        prefs.edit { putInt(KEY_OCR_MODEL, option.ordinal) }
+    }
+
     companion object {
         private const val PREFS_NAME = "dama_settings"
         private const val KEY_THEME_MODE = "theme_mode"
@@ -74,5 +86,6 @@ class SettingsRepository(context: Context) {
         private const val KEY_MOSAIC_STRENGTH = "mosaic_strength"
         private const val KEY_MOSAIC_STYLE = "mosaic_style"
         private const val KEY_FULLSCREEN = "fullscreen"
+        private const val KEY_OCR_MODEL = "ocr_model"
     }
 }

@@ -5,8 +5,8 @@ import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.yyt.dama.engine.TemplateDebugVisualizer
-import com.yyt.dama.engine.runTemplateDetection
+import com.yyt.dama.ocr.DetectionRequest
+import com.yyt.dama.ocr.OcrFacadeImpl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -63,12 +63,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 }
 //                Log.d("Dama/HomeVM", "bitmap decoded: ${bitmap.width}x${bitmap.height}")
 
-                val regions = withContext(Dispatchers.IO) {
-                    runTemplateDetection(ctx, bitmap)
+                val result = withContext(Dispatchers.IO) {
+                    OcrFacadeImpl(ctx).detect(DetectionRequest(bitmap = bitmap))
                 }
-//                Log.d("Dama/HomeVM", "detection done: ${regions.size} regions, calling onSuccess")
+//                Log.d("Dama/HomeVM", "detection done: ${result.regions.size} regions, calling onSuccess")
 
-                onSuccess(bitmap, regions)
+                onSuccess(result.bitmap, result.regions)
 //                Log.d("Dama/HomeVM", "onSuccess returned")
             } catch (e: Exception) {
 //                Log.e("Dama/HomeVM", "Test detection failed", e)
@@ -112,12 +112,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)!!
                 }
 
-                val debugBitmap = withContext(Dispatchers.IO) {
-                    TemplateDebugVisualizer.runDebugDetection(ctx, bitmap)
+                val result = withContext(Dispatchers.IO) {
+                    OcrFacadeImpl(ctx).detect(DetectionRequest(bitmap = bitmap, debug = true))
                 }
 
                 bitmap.recycle()
-                onSuccess(debugBitmap)
+                onSuccess(result.debugBitmap!!)
             } catch (e: Exception) {
                 onError(e)
             } finally {

@@ -90,6 +90,9 @@
     <string name="settings_mosaic_label_fine">精细</string>
     <string name="settings_mosaic_label_coarse">粗糙</string>
     <string name="settings_section_about">关于</string>
+    <string name="settings_section_ocr">OCR</string>
+    <string name="settings_ocr_model">检测模型</string>
+    <string name="settings_ocr_model_dialog_title">选择 OCR 检测模型</string>
     <string name="settings_version">版本号</string>
     <string name="settings_version_value">1.0.0</string>
     <string name="settings_license">开源协议</string>

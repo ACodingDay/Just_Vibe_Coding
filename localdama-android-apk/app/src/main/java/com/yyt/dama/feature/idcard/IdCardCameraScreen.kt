@@ -73,7 +73,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.yyt.dama.R
-import com.yyt.dama.engine.runTemplateDetection
+import com.yyt.dama.ocr.DetectionRequest
+import com.yyt.dama.ocr.OcrFacadeImpl
 import com.yyt.dama.ui.theme.CameraDarkColorScheme
 import com.yyt.dama.util.CropUtils
 import com.yyt.dama.util.OverlayPercentRect
@@ -210,13 +211,6 @@ private fun CameraScreenContent(
         }
     }
 
-    // ── 相册备选 ──
-    val galleryLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        if (uri != null) onGalleryFallback()
-    }
-
     // ═══════════════════════════════════════════════
     //  UI
     // ═══════════════════════════════════════════════
@@ -307,12 +301,14 @@ private fun CameraScreenContent(
                     isProcessing = true
                     scope.launch {
                         try {
-                            val regions = withContext(Dispatchers.IO) {
-                                runTemplateDetection(context, bmp, side = capturedSide)
+                            val result = withContext(Dispatchers.IO) {
+                                OcrFacadeImpl(context).detect(
+                                    DetectionRequest(bitmap = bmp, side = capturedSide)
+                                )
                             }
                             isProcessing = false
                             previewBitmap = null
-                            onDetectionDone(bmp, regions)
+                            onDetectionDone(result.bitmap, result.regions)
                         } catch (e: Exception) {
                             Log.e(TAG, "识别失败", e)
                             isProcessing = false
@@ -491,11 +487,7 @@ private fun CameraScreenContent(
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable {
-                            galleryLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        }
+                        .clickable { onGalleryFallback() }
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
@@ -518,11 +510,7 @@ private fun CameraScreenContent(
                 )
                 Spacer(Modifier.height(32.dp))
                 Button(
-                    onClick = {
-                        galleryLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
-                    },
+                    onClick = { onGalleryFallback() },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )

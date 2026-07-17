@@ -15,7 +15,17 @@ enum class CardSide { FRONT, BACK }
 data class IdCardField(
     val label: String,
     val xPct: Float, val yPct: Float, val wPct: Float, val hPct: Float,
-    val isDashed: Boolean = false
+    val isDashed: Boolean = false,
+    /**
+     * 标签宽度占比（字段主方向）。
+     *
+     * > 0 时，搜索区跳过标签部分，只覆盖值区域，避免标签文字被打码。
+     * - 横向模板：标签在左侧，labelWidthPct 表示 x 方向占比
+     * - 竖向模板：标签在上方，labelWidthPct 表示 y 方向占比
+     *
+     * 初始值为估算，需通过 OcrFacadeImpl 的调试日志校准。
+     */
+    val labelWidthPct: Float = 0f
 )
 
 /**
@@ -51,14 +61,16 @@ const val CARD_ASPECT_PORTRAIT = 358f / 441f
  *   住址 L1 258~271+L2 333~353+L3 384~405（三行连续合并）, 号码 536~555
  */
 val landscapeTemplate = listOf(
-    IdCardField("姓名",         0.05f, 0.13f, 0.40f, 0.06f),
-    IdCardField("性别 / 民族",  0.05f, 0.26f, 0.38f, 0.05f),
+    // labelWidthPct: 跳过左侧固定标签（"姓  名"等带空格），只搜索值区域。初始值为估算，需用日志校准
+    IdCardField("姓名",         0.05f, 0.13f, 0.40f, 0.06f, labelWidthPct = 0.12f),
+    IdCardField("性别",         0.05f, 0.26f, 0.18f, 0.05f, labelWidthPct = 0.12f),
+    IdCardField("民族",         0.23f, 0.26f, 0.20f, 0.05f, labelWidthPct = 0.08f),
     // 出生: OCR 框 y=250~270
-    IdCardField("出生日期",     0.05f, 0.38f, 0.48f, 0.05f),
+    IdCardField("出生日期",     0.05f, 0.38f, 0.48f, 0.05f, labelWidthPct = 0.12f),
     // 住址: OCR 框 y=333~404(此轮), 上下各冗余一行 → y 覆盖 259~434
-    IdCardField("住址",         0.05f, 0.51f, 0.50f, 0.22f),
+    IdCardField("住址",         0.05f, 0.51f, 0.50f, 0.22f, labelWidthPct = 0.12f),
     IdCardField("照片",         0.58f, 0.07f, 0.38f, 0.50f, isDashed = true),
-    IdCardField("身份号码",     0.05f, 0.83f, 0.88f, 0.05f),
+    IdCardField("身份号码",     0.05f, 0.83f, 0.88f, 0.05f, labelWidthPct = 0.25f),
 )
 
 /**
@@ -71,7 +83,8 @@ val landscapeTemplate = listOf(
  */
 val portraitTemplate = listOf(
     IdCardField("姓名",         0.13f, 0.55f, 0.06f, 0.40f),
-    IdCardField("性别 / 民族",  0.26f, 0.62f, 0.05f, 0.38f),
+    IdCardField("性别",         0.26f, 0.62f, 0.05f, 0.18f, labelWidthPct = 0.12f),
+    IdCardField("民族",         0.26f, 0.80f, 0.05f, 0.20f, labelWidthPct = 0.08f),
     IdCardField("出生日期",     0.38f, 0.52f, 0.05f, 0.48f),
     IdCardField("住址",         0.51f, 0.50f, 0.22f, 0.50f),
     IdCardField("照片",         0.07f, 0.04f, 0.50f, 0.38f, isDashed = true),
@@ -90,8 +103,8 @@ val portraitTemplate = listOf(
  */
 val landscapeBackTemplate = listOf(
     IdCardField("国徽",     0.04f, 0.04f, 0.36f, 0.46f, isDashed = true),
-    IdCardField("签发机关", 0.48f, 0.12f, 0.48f, 0.12f),
-    IdCardField("有效期限", 0.04f, 0.72f, 0.88f, 0.14f),
+    IdCardField("签发机关", 0.48f, 0.12f, 0.48f, 0.12f, labelWidthPct = 0.15f),
+    IdCardField("有效期限", 0.04f, 0.72f, 0.88f, 0.14f, labelWidthPct = 0.15f),
 )
 
 /**

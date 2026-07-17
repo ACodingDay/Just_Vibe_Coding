@@ -45,7 +45,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yyt.dama.R
-import com.yyt.dama.engine.runDetection
+import com.yyt.dama.ocr.DetectionRequest
+import com.yyt.dama.ocr.OcrFacadeImpl
 import com.yyt.dama.ui.animation.bounceClick
 import com.yyt.dama.ui.components.DamaTopBar
 import kotlinx.coroutines.Dispatchers
@@ -410,11 +411,17 @@ fun IdCardEditScreen(
                                 isRunning = true
                                 scope.launch {
                                     try {
-                                        val (cropped, regions) = withContext(Dispatchers.IO) {
-                                            runDetection(context, bmp, cardOffsetY, screenW, cardH, orientation)
+                                        // 裁剪逻辑来自 UI 布局参数，属界面层职责，不放入 Facade
+                                        val cropped = withContext(Dispatchers.IO) {
+                                            cropCardRegion(bmp, cardOffsetY, screenW, cardH)
+                                        }
+                                        val result = withContext(Dispatchers.IO) {
+                                            OcrFacadeImpl(context).detect(
+                                                DetectionRequest(bitmap = cropped, orientation = orientation)
+                                            )
                                         }
                                         isRunning = false
-                                        onDetectionDone(cropped, regions)
+                                        onDetectionDone(result.bitmap, result.regions)
                                     } catch (e: Exception) {
                                         Log.e("Dama", "Detection failed", e)
                                         isRunning = false
@@ -446,4 +453,35 @@ fun IdCardEditScreen(
             }
         }
     }
+}
+
+/**
+ * 根据 overlay 位置裁剪原图，提取卡片区域。
+ *
+ * cardOffsetY/screenW/cardH 来自 UI 布局（IdCardEditScreen 的 overlay 位置），
+ * 通过 `scale = imgW / screenW` 把屏幕坐标映射到图片坐标。
+ *
+ * 注意：返回的 Bitmap 与 [original] 共享像素缓冲区（`Bitmap.createBitmap` view），
+ * 不可单独 recycle。
+ *
+ * 从 `DetectionEngine.runDetection` 提取（阶段四-12），属界面层职责，不放入 Facade。
+ *
+ * @param original    原始图片
+ * @param cardOffsetY 卡片在屏幕上的 Y 偏移（像素）
+ * @param screenW     屏幕宽度（像素）
+ * @param cardH       卡片高度（像素）
+ * @return 裁剪后的卡片区域图片
+ */
+private fun cropCardRegion(
+    original: Bitmap,
+    cardOffsetY: Float,
+    screenW: Float,
+    cardH: Float
+): Bitmap {
+    val imgW = original.width
+    val imgH = original.height
+    val scale = imgW / screenW
+    val cropY = max(0, (cardOffsetY * scale).roundToInt())
+    val cropH = min(imgH - cropY, (cardH * scale).roundToInt())
+    return Bitmap.createBitmap(original, 0, cropY, imgW, cropH)
 }

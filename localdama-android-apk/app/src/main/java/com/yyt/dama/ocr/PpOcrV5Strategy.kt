@@ -1,23 +1,71 @@
-package com.yyt.dama.engine
+package com.yyt.dama.ocr
 
-import ai.onnxruntime.*
+import ai.onnxruntime.OnnxTensor
+import ai.onnxruntime.OrtEnvironment
+import ai.onnxruntime.OrtSession
 import android.content.Context
-import android.graphics.*
+import android.graphics.Bitmap
+import android.graphics.Rect
 import android.util.Log
 import androidx.core.graphics.scale
-import java.io.Closeable
 import java.nio.FloatBuffer
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-class OcrDetector(context: Context) : Closeable {
+/**
+ * PP-OCRv5 检测策略 — 封装 v5 模型的完整检测流程。
+ *
+ * 完整封装：
+ * - 模型加载: `assets/models/det_v5.onnx`
+ * - 预处理: maxSide=960, 对齐 32, BGR 通道, ImageNet 归一化
+ *   （mean=[0.406, 0.456, 0.485], std=[0.225, 0.224, 0.229]）
+ * - 推理: ONNX Runtime, intraOpNumThreads=4, ALL_OPT
+ * - 后处理: 阈值 0.3 二值化 → 3x3 十字膨胀 → 8 连通 floodfill → 框合并
+ *
+ * 算法行为与原 `com.yyt.dama.engine.OcrDetector`（model=PP_OCR_V5）完全一致，
+ * 迁移自该类，便于回归验证。原 OcrDetector 将在阶段五删除。
+ *
+ * 资源管理：[close] 释放 ONNX session。当前由 [OcrFacadeImpl] 在单次 detect 内
+ * 创建并 close；未来可由 Facade 持有做 session 复用。
+ *
+ * @param context Android Context（用于加载 assets 下的模型文件）
+ */
+class PpOcrV5Strategy(context: Context) : OcrStrategy {
 
     private val env: OrtEnvironment = OrtEnvironment.getEnvironment()
     private val session: OrtSession
 
+    // ── 预处理参数（PP-OCRv5 专用） ──
+
+    /** 输入图最长边上限，超过则等比缩放 */
+    private val maxSide = 960
+
+    /** 尺寸对齐倍数（PP-OCR 要求 32 的倍数） */
+    private val alignMultiple = 32
+
+    /** 通道均值（BGR 顺序：mean[0]=B, mean[1]=G, mean[2]=R） */
+    private val mean = floatArrayOf(0.406f, 0.456f, 0.485f)
+
+    /** 通道标准差（BGR 顺序） */
+    private val std = floatArrayOf(0.225f, 0.224f, 0.229f)
+
+    // ── 后处理参数 ──
+
+    /** 二值化阈值：prob > binThresh 视为文本像素 */
+    private val binThresh = 0.3f
+
+    /** 框置信度阈值：框内平均 prob > scoreThresh 才保留 */
+    private val scoreThresh = 0.3f
+
+    /** 最终过滤的最小框宽（像素） */
+    private val minBoxWidth = 10
+
+    /** 最终过滤的最小框高（像素） */
+    private val minBoxHeight = 10
+
     init {
-        val modelBytes = context.assets.open("models/det_v5.onnx").readBytes()
+        val modelBytes = context.assets.open(MODEL_PATH).readBytes()
         OrtSession.SessionOptions().use { options ->
             options.setIntraOpNumThreads(4)
             options.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
@@ -25,8 +73,14 @@ class OcrDetector(context: Context) : Closeable {
         } // options 在此自动 close，释放原生句柄
     }
 
-    fun detect(bitmap: Bitmap): List<Rect> {
-        Log.d("OCR", "原图尺寸: ${bitmap.width}x${bitmap.height}")
+    /**
+     * 全图检测 — 对完整图片做 OCR，返回文本框列表（原图坐标）。
+     *
+     * 流程：预处理 → ONNX 推理 → 后处理 → 返回框。
+     * 内部回收 resizedBitmap；调用方负责原图 [bitmap] 的回收。
+     */
+    override fun detect(bitmap: Bitmap): List<Rect> {
+        Log.d(TAG, "原图尺寸: ${bitmap.width}x${bitmap.height}")
         val preResult = preprocess(bitmap)
 
         val inputName = session.inputNames.iterator().next()
@@ -43,24 +97,25 @@ class OcrDetector(context: Context) : Closeable {
         val boxes = postprocess(prob, h, w, preResult)
         result.close()
         preResult.resizedBitmap.recycle()
-        Log.d("OCR", "检测到 ${boxes.size} 个文本区域框")
+        Log.d(TAG, "检测到 ${boxes.size} 个文本区域框")
         return boxes
     }
 
     /**
-     * 仅对 bitmap 的指定矩形区域做 OCR 检测。
+     * 区域检测 — 仅对 bitmap 的指定矩形区域做 OCR。
      *
      * 返回的检测框坐标已映射回原图坐标系。
      * 多次调用共享同一个 ONNX session，调用者负责最终 [close]。
      *
      * @param bitmap 完整原图
-     * @param region 需要检测的区域（原图坐标）
+     * @param region 需要检测的区域（原图坐标，会被 clamp 到图片范围内）
      * @return 区域内的文本框列表（原图坐标）
      */
-    fun detectInRegion(bitmap: Bitmap, region: Rect): List<Rect> {
+    override fun detectInRegion(bitmap: Bitmap, region: Rect): List<Rect> {
         val imgW = bitmap.width
         val imgH = bitmap.height
 
+        // 将 region clamp 到图片范围内，避免越界裁剪
         val rl = max(0, region.left).coerceAtMost(imgW)
         val rt = max(0, region.top).coerceAtMost(imgH)
         val rr = max(0, region.right).coerceAtMost(imgW)
@@ -69,10 +124,8 @@ class OcrDetector(context: Context) : Closeable {
         val regionH = rb - rt
         if (regionW < 16 || regionH < 16) return emptyList()
 
-        // 裁剪区域
+        // 裁剪区域后送入预处理
         val cropped = Bitmap.createBitmap(bitmap, rl, rt, regionW, regionH)
-
-        // 预处理 + 推理
         val preResult = preprocess(cropped)
         cropped.recycle()
 
@@ -87,30 +140,30 @@ class OcrDetector(context: Context) : Closeable {
         val h = shape[2].toInt()
         val w = shape[3].toInt()
 
-        // postprocess 返回的是裁剪区域坐标
+        // postprocess 返回的是裁剪区域坐标，需映射回原图
         val boxes = postprocess(prob, h, w, preResult)
         result.close()
         preResult.resizedBitmap.recycle()
 
-        Log.d("OCR", "区域 [${rl},${rt},${rr},${rb}] 检测到 ${boxes.size} 个文本框")
+        Log.d(TAG, "区域 [${rl},${rt},${rr},${rb}] 检测到 ${boxes.size} 个文本框")
 
-        // 映射回原图坐标
+        // 把裁剪区域坐标映射回原图坐标（加上裁剪起点偏移）
         return boxes.map { box ->
             Rect(box.left + rl, box.top + rt, box.right + rl, box.bottom + rt)
         }
     }
 
-    data class PreprocessResult(
-        val tensor: OnnxTensor,
-        val originalW: Int,
-        val originalH: Int,
-        val modelW: Int,
-        val modelH: Int,
-        val resizedBitmap: Bitmap
-    )
-
+    /**
+     * 预处理 — resize + NCHW 平面格式 + 通道归一化。
+     *
+     * PP-OCRv5 使用 BGR 通道顺序（与 v3 的 RGB 不同）：
+     * - 第一个写入通道取像素 B 分量（`p and 0xFF`），用 mean[0]/std[0] 归一化
+     * - 第二个写入通道取像素 G 分量（`p shr 8 and 0xFF`），用 mean[1]/std[1] 归一化
+     * - 第三个写入通道取像素 R 分量（`p shr 16 and 0xFF`），用 mean[2]/std[2] 归一化
+     *
+     * 尺寸对齐：`round(scaled / alignMultiple) * alignMultiple`，保证是 32 的倍数。
+     */
     private fun preprocess(bitmap: Bitmap): PreprocessResult {
-        val maxSide = 960
         val originalW = bitmap.width
         val originalH = bitmap.height
 
@@ -120,26 +173,26 @@ class OcrDetector(context: Context) : Closeable {
             1.0f
         }
 
-        // v5 官方: round(x/32)*32
-        val newW = maxOf((originalW * ratio / 32f).roundToInt() * 32, 32)
-        val newH = maxOf((originalH * ratio / 32f).roundToInt() * 32, 32)
+        // 尺寸对齐: round(x / alignMultiple) * alignMultiple
+        val newW = maxOf((originalW * ratio / alignMultiple.toFloat()).roundToInt() * alignMultiple, alignMultiple)
+        val newH = maxOf((originalH * ratio / alignMultiple.toFloat()).roundToInt() * alignMultiple, alignMultiple)
 
         val resized = bitmap.scale(newW, newH)
-        Log.d("OCR", "预处理: ${originalW}x${originalH} -> ${newW}x${newH}")
+        Log.d(TAG, "预处理: ${originalW}x${originalH} -> ${newW}x${newH}")
 
         val floatBuffer = FloatBuffer.allocate(3 * newH * newW)
         val pixels = IntArray(newW * newH)
         resized.getPixels(pixels, 0, newW, 0, 0, newW, newH)
 
-        // NCHW 平面格式: 先写所有 B 通道，再写所有 G 通道，最后写所有 R 通道
+        // NCHW 平面格式：按通道顺序依次写入（BGR）
         for (p in pixels) {
-            floatBuffer.put(((p and 0xFF) / 255.0f - 0.406f) / 0.225f)
+            floatBuffer.put(((p and 0xFF) / 255.0f - mean[0]) / std[0])
         }
         for (p in pixels) {
-            floatBuffer.put((((p shr 8) and 0xFF) / 255.0f - 0.456f) / 0.224f)
+            floatBuffer.put((((p shr 8) and 0xFF) / 255.0f - mean[1]) / std[1])
         }
         for (p in pixels) {
-            floatBuffer.put((((p shr 16) and 0xFF) / 255.0f - 0.485f) / 0.229f)
+            floatBuffer.put((((p shr 16) and 0xFF) / 255.0f - mean[2]) / std[2])
         }
         floatBuffer.rewind()
 
@@ -156,6 +209,20 @@ class OcrDetector(context: Context) : Closeable {
         )
     }
 
+    /**
+     * 后处理 — 二值化 + 膨胀 + 连通域 + 框合并。
+     *
+     * 流程：
+     * 1. 二值化：prob > binThresh 视为前景
+     * 2. 3x3 十字膨胀：连接相邻文字笔画
+     * 3. 8 连通 floodfill：找连通域 bounding box
+     * 4. 过滤：pixelCount > 20 且宽高 > 5 且 score > scoreThresh
+     * 5. 按 score 降序排序
+     * 6. 合并相邻框（gap ≤ 6）
+     * 7. 过滤最小尺寸（宽高 > minBoxWidth / minBoxHeight）
+     *
+     * 返回的坐标映射回原图尺寸（基于 pre.originalW / originalH）。
+     */
     private fun postprocess(
         prob: FloatArray,
         h: Int,
@@ -163,11 +230,10 @@ class OcrDetector(context: Context) : Closeable {
         pre: PreprocessResult
     ): List<Rect> {
         val rawBoxes = mutableListOf<Pair<Rect, Float>>()
-        val thresh = 0.3f
 
         var binary = BooleanArray(h * w)
         for (i in prob.indices) {
-            binary[i] = prob[i] > thresh
+            binary[i] = prob[i] > binThresh
         }
 
         // Morphological dilation (3x3 cross) to fill small gaps between text strokes
@@ -175,6 +241,7 @@ class OcrDetector(context: Context) : Closeable {
 
         val visited = BooleanArray(h * w)
         val stack = ArrayDeque<Int>()
+        // 8 连通方向的 (dy, dx) 对：(-1,-1), (-1,0), (-1,1), (0,-1), (0,1), (1,-1), (1,0), (1,1)
         val dirs8 = intArrayOf(-1, -1, 0, -1, 1, -1, -1, 0, 1, 0, -1, 1, 0, 1, 1, 1)
 
         for (y in 0 until h) {
@@ -213,6 +280,7 @@ class OcrDetector(context: Context) : Closeable {
                     }
                 }
 
+                // 连通域 bounding box 从模型图坐标映射回原图坐标
                 val left = (minX * pre.originalW.toFloat() / w).toInt()
                 val top = (minY * pre.originalH.toFloat() / h).toInt()
                 val right = ((maxX + 1f) * pre.originalW.toFloat() / w).toInt()
@@ -223,7 +291,7 @@ class OcrDetector(context: Context) : Closeable {
 
                 val score = computeBoxScore(prob, minX, maxX, minY, maxY, w, h)
 
-                if (pixelCount > 20 && rw > 5 && rh > 5 && score > 0.3f) {
+                if (pixelCount > 20 && rw > 5 && rh > 5 && score > scoreThresh) {
                     rawBoxes.add(Pair(Rect(left, top, right, bottom), score))
                 }
             }
@@ -233,10 +301,11 @@ class OcrDetector(context: Context) : Closeable {
         val merged = mergeNearbyBoxes(filtered)
 
         return merged.filter { rect ->
-            rect.width() > 10 && rect.height() > 10
+            rect.width() > minBoxWidth && rect.height() > minBoxHeight
         }
     }
 
+    /** 计算框内 prob 平均值，作为该框的置信度分数 */
     private fun computeBoxScore(
         prob: FloatArray,
         minX: Int, maxX: Int, minY: Int, maxY: Int,
@@ -255,6 +324,12 @@ class OcrDetector(context: Context) : Closeable {
         return if (count > 0) sum / count else 0f
     }
 
+    /**
+     * 合并相邻框 — 贪心合并 gap ≤ 6 的框。
+     *
+     * 按 score 降序处理（调用方已排序），每个框尝试吸收后续所有未使用框，
+     * 吸收后继续扫描直到无新合并（changed = false）。
+     */
     private fun mergeNearbyBoxes(boxes: List<Rect>): List<Rect> {
         if (boxes.isEmpty()) return emptyList()
         val merged = mutableListOf<Rect>()
@@ -281,7 +356,7 @@ class OcrDetector(context: Context) : Closeable {
         return merged
     }
 
-    /** Morphological dilation with 3x3 cross kernel to connect nearby text pixels */
+    /** 3x3 十字核膨胀 — 连接相邻文字像素（上下左右），填充小的笔画间隙 */
     private fun dilate3x3(binary: BooleanArray, w: Int, h: Int): BooleanArray {
         val result = BooleanArray(w * h)
         for (y in 0 until h) {
@@ -299,7 +374,23 @@ class OcrDetector(context: Context) : Closeable {
         return result
     }
 
+    /** 释放 ONNX session 原生资源 */
     override fun close() {
         session.close()
+    }
+
+    /** 预处理结果 — 携带推理后的尺寸映射信息，供后处理坐标还原使用 */
+    private data class PreprocessResult(
+        val tensor: OnnxTensor,
+        val originalW: Int,
+        val originalH: Int,
+        val modelW: Int,
+        val modelH: Int,
+        val resizedBitmap: Bitmap
+    )
+
+    private companion object {
+        private const val TAG = "OCR"
+        private const val MODEL_PATH = "models/det_v5.onnx"
     }
 }

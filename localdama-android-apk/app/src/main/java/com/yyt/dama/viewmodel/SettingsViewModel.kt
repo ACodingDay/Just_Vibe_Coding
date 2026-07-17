@@ -3,6 +3,7 @@ package com.yyt.dama.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import com.yyt.dama.data.SettingsRepository
+import com.yyt.dama.ocr.OcrModelOption
 import com.yyt.dama.feature.settings.MosaicStyleOption
 import com.yyt.dama.ui.theme.ThemeColor
 import com.yyt.dama.ui.theme.ThemeMode
@@ -33,6 +34,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _mosaicStyleOption = MutableStateFlow(repo.loadMosaicStyleOption())
     val mosaicStyleOption: StateFlow<MosaicStyleOption> = _mosaicStyleOption.asStateFlow()
 
+    private val _ocrModelOption = MutableStateFlow(repo.loadOcrModelOption())
+    val ocrModelOption: StateFlow<OcrModelOption> = _ocrModelOption.asStateFlow()
+
     fun setThemeMode(mode: ThemeMode) {
         _themeMode.value = mode
         repo.saveThemeMode(mode)
@@ -56,5 +60,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setMosaicStyleOption(option: MosaicStyleOption) {
         _mosaicStyleOption.value = option
         repo.saveMosaicStyleOption(option)
+    }
+
+    fun setOcrModelOption(option: OcrModelOption) {
+        _ocrModelOption.value = option
+        repo.saveOcrModelOption(option)
     }
 }
