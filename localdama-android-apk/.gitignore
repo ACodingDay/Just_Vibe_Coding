@@ -31,3 +31,6 @@ code-review-report.md
 
 # macOS
 .DS_Store
+
+# 工作目录（WorkBuddy 工具缓存，不需要提交）
+.workbuddy/
