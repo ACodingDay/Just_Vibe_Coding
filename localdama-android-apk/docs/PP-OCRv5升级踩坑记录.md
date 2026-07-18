@@ -156,7 +156,7 @@ for (p in pixels) { floatBuffer.put(R); }
 | `OcrDetector.kt` | 模型 det_v3 → det_v5；NCHW 平面格式写入；resize 取整改为 round；后处理阈值调整（thresh=0.3, score>0.3）；添加形态学膨胀 |
 | `DamaNavGraph.kt` | 图片从 assets 加载 + sRGB 色彩空间强制；inSampleSize 阈值 2048；添加 isTestRunning 状态管理 |
 | `HomeScreen.kt` | 添加 OCR 检测加载遮罩 UI |
-| `assets/models/` | 添加 det_v5.onnx、rec_v5.onnx、ppocrv5_dict.txt；删除 det_v3.onnx |
+| `assets/models/Paddle/` | 添加 det_v5.onnx、rec_v5.onnx、ppocrv5_dict.txt；删除 det_v3.onnx |
 
 ### 关键参数配置（与 Python 参考实现对齐）
 

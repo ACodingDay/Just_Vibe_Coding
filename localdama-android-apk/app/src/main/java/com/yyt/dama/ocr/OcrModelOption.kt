@@ -13,11 +13,20 @@ package com.yyt.dama.ocr
  * [mean] 和 [std] 的顺序与预处理通道写入顺序一致，
  * 策略实现（如 [PpOcrV5Strategy]）按 mean[0]/std[0] → mean[1]/std[1] → mean[2]/std[2] 顺序写入。
  *
+ * ## 模型路径
+ * 所有模型文件统一放在 `assets/models/` 下（[MODELS_BASE_PATH]），
+ * [modelPath] 是相对于该基路径的子路径，格式为「目录/文件名」，
+ * 例如 `"Paddle/det_v5.onnx"` 对应磁盘文件 `assets/models/Paddle/det_v5.onnx`。
+ *
+ * 设置页对话框直接显示 [modelPath]（相对路径）；
+ * 策略类实际加载时使用完整路径 `"$MODELS_BASE_PATH/$modelPath"`（见 [PpOcrV5Strategy]）。
+ *
  * 阶段五-15：从 `com.yyt.dama.engine` 移入 `com.yyt.dama.ocr` 包（解耦要彻底，包自包含）。
  * 被 [OcrStrategyFactory] 用于分发策略，被 `SettingsRepository` 用于持久化用户选择。
  */
 enum class OcrModelOption(
     val displayName: String,
+    /** 模型文件相对路径（相对于 [MODELS_BASE_PATH]），格式为「目录/文件名」 */
     val modelPath: String,
     val maxSide: Int,
     val alignMultiple: Int,
@@ -30,7 +39,7 @@ enum class OcrModelOption(
 ) {
     PP_OCR_V5(
         displayName = "PP-OCRv5",
-        modelPath = "models/det_v5.onnx",
+        modelPath = "Paddle/det_v5.onnx",
         maxSide = 960,
         alignMultiple = 32,
         mean = floatArrayOf(0.406f, 0.456f, 0.485f),
@@ -39,4 +48,9 @@ enum class OcrModelOption(
         scoreThresh = 0.3f,
     );
     // 未来新增模型只需在此追加枚举项
+
+    companion object {
+        /** 所有 OCR 模型文件的 assets 基路径（对应 `assets/models/`） */
+        const val MODELS_BASE_PATH = "models"
+    }
 }

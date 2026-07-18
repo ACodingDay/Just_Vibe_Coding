@@ -70,6 +70,7 @@ fun HomeScreen(
     onSensitiveInfoClick: () -> Unit,
     onTestClick: () -> Unit,
     onTestLongClick: () -> Unit = {},
+    onTestDoubleClick: () -> Unit = {},
     onSettingsClick: () -> Unit,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
@@ -214,7 +215,8 @@ fun HomeScreen(
                             enabled = true,
                             isDarkTheme = isDarkTheme,
                             onClick = onTestClick,
-                            onLongClick = onTestLongClick
+                            onLongClick = onTestLongClick,
+                            onDoubleClick = onTestDoubleClick
                         )
                         StaggeredFeatureCard(
                             modifier = Modifier.weight(1f),
@@ -274,7 +276,8 @@ private fun StaggeredFeatureCard(
     enabled: Boolean,
     isDarkTheme: Boolean,
     onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null
+    onLongClick: (() -> Unit)? = null,
+    onDoubleClick: (() -> Unit)? = null
 ) {
     val visibleState = remember { MutableTransitionState(false) }
     LaunchedEffect(Unit) {
@@ -302,7 +305,8 @@ private fun StaggeredFeatureCard(
             enabled = enabled,
             isDarkTheme = isDarkTheme,
             onClick = onClick,
-            onLongClick = onLongClick
+            onLongClick = onLongClick,
+            onDoubleClick = onDoubleClick
         )
     }
 }
@@ -316,15 +320,17 @@ private fun FeatureCard(
     enabled: Boolean,
     isDarkTheme: Boolean,
     onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null
+    onLongClick: (() -> Unit)? = null,
+    onDoubleClick: (() -> Unit)? = null
 ) {
     val alpha = if (enabled) 1f else 0.4f
     val accentColor = accentColorFor(accentIndex, isDarkTheme)
 
-    val clickModifier = if (onLongClick != null) {
+    val clickModifier = if (onLongClick != null || onDoubleClick != null) {
         Modifier.combinedClickable(
             onClick = { if (enabled) onClick() },
-            onLongClick = { if (enabled) onLongClick() }
+            onLongClick = onLongClick?.let { l -> { if (enabled) l() } },
+            onDoubleClick = onDoubleClick?.let { d -> { if (enabled) d() } }
         )
     } else {
         Modifier.clickable { if (enabled) onClick() }

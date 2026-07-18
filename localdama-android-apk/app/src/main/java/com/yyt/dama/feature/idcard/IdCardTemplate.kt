@@ -64,7 +64,9 @@ val landscapeTemplate = listOf(
     // labelWidthPct: 跳过左侧固定标签（"姓  名"等带空格），只搜索值区域。初始值为估算，需用日志校准
     IdCardField("姓名",         0.05f, 0.13f, 0.40f, 0.06f, labelWidthPct = 0.12f),
     IdCardField("性别",         0.05f, 0.26f, 0.18f, 0.05f, labelWidthPct = 0.12f),
-    IdCardField("民族",         0.23f, 0.26f, 0.20f, 0.05f, labelWidthPct = 0.08f),
+    // 民族: 标签实际从 0.31 开始（探针日志校准，x 0.23→0.31 对齐标签起点），
+    // 0.08 跳过后值区域仍有足够宽度，det 才能在小区域上正常工作
+    IdCardField("民族",         0.31f, 0.26f, 0.20f, 0.05f, labelWidthPct = 0.08f),
     // 出生: OCR 框 y=250~270
     IdCardField("出生日期",     0.05f, 0.38f, 0.48f, 0.05f, labelWidthPct = 0.12f),
     // 住址: OCR 框 y=333~404(此轮), 上下各冗余一行 → y 覆盖 259~434

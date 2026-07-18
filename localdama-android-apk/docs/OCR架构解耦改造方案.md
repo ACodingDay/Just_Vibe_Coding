@@ -275,7 +275,7 @@ import kotlin.math.roundToInt
  * PP-OCRv5 检测策略。
  *
  * 完整封装 v5 模型的：
- * - 模型加载: assets/models/det_v5.onnx
+ * - 模型加载: assets/models/Paddle/det_v5.onnx
  * - 预处理: maxSide=960, 对齐32, BGR 通道, ImageNet 归一化
  * - 后处理: 阈值0.3, 3x3膨胀, 8连通 floodfill, 框合并
  */
@@ -295,7 +295,7 @@ class PpOcrV5Strategy(context: Context) : OcrStrategy {
     private val scoreThresh = 0.3f
 
     init {
-        val modelBytes = context.assets.open("models/det_v5.onnx").readBytes()
+        val modelBytes = context.assets.open("models/Paddle/det_v5.onnx").readBytes()
         OrtSession.SessionOptions().use { options ->
             options.setIntraOpNumThreads(4)
             options.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)

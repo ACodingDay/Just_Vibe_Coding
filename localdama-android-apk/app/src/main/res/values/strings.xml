@@ -18,6 +18,8 @@
     <string name="home_ocr_test">OCR 测试</string>
     <string name="home_ocr_test_desc">读取 test.jpg 识别文本</string>
     <string name="ocr_test_asset_missing">测试图片缺失</string>
+    <string name="ocr_text_test_done">文本识别完成（%1$d 行），详见日志</string>
+    <string name="ocr_text_test_failed">文本识别失败: %1$s</string>
 
     <!-- ── 身份证编辑 ── -->
     <string name="id_card_edit_title">身份证打码</string>
@@ -84,11 +86,11 @@
     <string name="settings_mosaic_style_pixelate">像素马赛克</string>
     <string name="settings_mosaic_style_hint">点击展开选择</string>
     <string name="settings_mosaic_strength">打码强度</string>
-    <string name="settings_mosaic_fine">细</string>
+    <string name="settings_mosaic_fine">弱</string>
     <string name="settings_mosaic_medium">中</string>
-    <string name="settings_mosaic_coarse">粗</string>
-    <string name="settings_mosaic_label_fine">精细</string>
-    <string name="settings_mosaic_label_coarse">粗糙</string>
+    <string name="settings_mosaic_coarse">强</string>
+    <string name="settings_mosaic_label_fine">弱</string>
+    <string name="settings_mosaic_label_coarse">强</string>
     <string name="settings_section_about">关于</string>
     <string name="settings_section_ocr">OCR</string>
     <string name="settings_ocr_model">检测模型</string>

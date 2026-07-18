@@ -10,7 +10,7 @@
 
 | 文件 | 行号 | 硬编码内容 |
 |------|------|-----------|
-| `OcrDetector.kt` | 20 | 模型路径 `"models/det_v5.onnx"` |
+| `OcrDetector.kt` | 20 | 模型路径 `"models/Paddle/det_v5.onnx"` |
 | `OcrDetector.kt` | 113 | 最大输入尺寸 `maxSide = 960` |
 | `OcrDetector.kt` | 136-143 | 归一化参数 `mean=[0.406, 0.456, 0.485]`、`std=[0.225, 0.224, 0.229]` |
 | `OcrDetector.kt` | 166 | 二值化阈值 `thresh = 0.3f` |
@@ -30,10 +30,10 @@ SettingsScreen (无 OCR 配置)
 IdCardCameraScreen.kt:311  ─┐
 HomeViewModel.kt:67         ├─> runTemplateDetection()  ─┐
                              │    └─ DetectionEngine.kt   │
-                             │         └─ OcrDetector(context)  ← 硬编码 models/det_v5.onnx
+                             │         └─ OcrDetector(context)  ← 硬编码 models/Paddle/det_v5.onnx
                              │
 TemplateDebugVisualizer.kt:195 ─┘
-    └─ OcrDetector(context)  ← 硬编码 models/det_v5.onnx
+    └─ OcrDetector(context)  ← 硬编码 models/Paddle/det_v5.onnx
 ```
 
 ### 1.3 已有设置框架
@@ -80,7 +80,7 @@ enum class OcrModelOption(
 ) {
     PP_OCR_V5(
         displayName = "PP-OCRv5",
-        modelPath = "models/det_v5.onnx",
+        modelPath = "models/Paddle/det_v5.onnx",
         maxSide = 960,
         alignMultiple = 32,
         mean = floatArrayOf(0.406f, 0.456f, 0.485f),
@@ -90,7 +90,7 @@ enum class OcrModelOption(
     ),
     PP_OCR_V3(
         displayName = "PP-OCRv3",
-        modelPath = "models/det_v3.onnx",
+        modelPath = "models/Paddle/det_v3.onnx",
         maxSide = 960,
         alignMultiple = 32,
         mean = floatArrayOf(0.485f, 0.456f, 0.406f),
@@ -112,7 +112,7 @@ enum class OcrModelOption(
 // 改造前 (第 14-26 行)
 class OcrDetector(context: Context) : Closeable {
     init {
-        val modelBytes = context.assets.open("models/det_v5.onnx").readBytes()
+        val modelBytes = context.assets.open("models/Paddle/det_v5.onnx").readBytes()
         // ...
     }
 }
@@ -344,7 +344,7 @@ val detector = OcrDetector(context, modelOption)
 
 | 步骤 | 说明 |
 |------|------|
-| 9 | 将可选模型放入 `app/src/main/assets/models/` 目录（如 `det_v3.onnx`） |
+| 9 | 将可选模型放入 `app/src/main/assets/models/Paddle/` 目录（如 `det_v3.onnx`） |
 | 10 | 在 `OcrModelOption` 枚举中追加新模型项 |
 
 ### 阶段四（可选）：动态加载外部模型

@@ -85,12 +85,12 @@ paddle2onnx \
 
 将转换得到的 `det_v5.onnx` 复制到：
 ```
-D:\yyt_code\github_repos\Just_Vibe_Coding\localdama-android-apk\app\src\main\assets\models\det_v5.onnx
+D:\yyt_code\github_repos\Just_Vibe_Coding\localdama-android-apk\app\src\main\assets\models\Paddle\det_v5.onnx
 ```
 
 如果有识别模型 `rec_v5.onnx`，同样放入：
 ```
-D:\yyt_code\github_repos\Just_Vibe_Coding\localdama-android-apk\app\src\main\assets\models\rec_v5.onnx
+D:\yyt_code\github_repos\Just_Vibe_Coding\localdama-android-apk\app\src\main\assets\models\Paddle\rec_v5.onnx
 ```
 
 ---
@@ -103,10 +103,10 @@ D:\yyt_code\github_repos\Just_Vibe_Coding\localdama-android-apk\app\src\main\ass
 
 ```kotlin
 // 原来：
-val modelBytes = context.assets.open("models/det_v3.onnx").readBytes()
+val modelBytes = context.assets.open("models/Paddle/det_v3.onnx").readBytes()
 
 // 改为：
-val modelBytes = context.assets.open("models/det_v5.onnx").readBytes()
+val modelBytes = context.assets.open("models/Paddle/det_v5.onnx").readBytes()
 ```
 
 PP-OCRv5 det 的预处理参数（归一化）与 v3 一致（ImageNet 均值/标准差），所以 `preprocess` 函数无需修改。
@@ -152,14 +152,14 @@ class OcrRecognizer(context: Context) {
     private val dictionary: List<String>
 
     init {
-        val modelBytes = context.assets.open("models/rec_v5.onnx").readBytes()
+        val modelBytes = context.assets.open("models/Paddle/rec_v5.onnx").readBytes()
         val options = OrtSession.SessionOptions()
         options.setIntraOpNumThreads(4)
         options.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
         session = env.createSession(modelBytes, options)
 
         // 加载 v5 字典（从 inference.yml 中提取的 character_dict）
-        dictionary = context.assets.open("models/ppocr_v5_dict.txt").readLines()
+        dictionary = context.assets.open("models/Paddle/ppocrv5_dict.txt").readLines()
     }
 
     fun recognize(bitmap: Bitmap): Pair<String, Float> {
@@ -232,7 +232,7 @@ class OcrRecognizer(context: Context) {
 
 从 `PP-OCRv5_mobile_rec_infer/inference.yml` 中提取 `character_dict` 列表，保存为文本文件（每行一个字），放入：
 ```
-app/src/main/assets/models/ppocr_v5_dict.txt
+app/src/main/assets/models/Paddle/ppocrv5_dict.txt
 ```
 
 注意：需要在字典**开头**插入一个空行（对应 CTC 的 blank 索引 0），在**末尾**添加一个空格行。
@@ -284,7 +284,7 @@ recognizer.close()
 
 1. 安装 `paddlepaddle==3.0.0` + `paddle2onnx==2.0.2rc1`
 2. 用 paddle2onnx 将 `PP-OCRv5_mobile_det_infer` 转为 `det_v5.onnx`
-3. 将 `det_v5.onnx` 放入 `app/src/main/assets/models/`
+3. 将 `det_v5.onnx` 放入 `app/src/main/assets/models/Paddle/`
 4. 修改 `OcrDetector.kt` 中的模型路径 `det_v3.onnx` → `det_v5.onnx`
 5. 将后处理 score 阈值从 0.5 调为 0.6
 6. 编译运行，验证检测效果
@@ -293,7 +293,7 @@ recognizer.close()
 
 1. 上述 1-3 步 + 同样方式转换 rec 模型为 `rec_v5.onnx`
 2. 新建 `OcrRecognizer.kt` 类（参考上面代码）
-3. 准备 v5 字典文件 `ppocr_v5_dict.txt`
+3. 准备 v5 字典文件 `ppocrv5_dict.txt`
 4. 在业务代码中检测后调用识别
 5. 编译运行，验证检测和识别效果
 

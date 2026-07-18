@@ -46,6 +46,7 @@ fun ResultScreen(
     detectedRegions: List<Rect>,
     initialStyle: MosaicStyle,
     initialStyleOption: MosaicStyleOption = MosaicStyleOption.FILL_WHITE,
+    mosaicStrength: Float = 0.5f,
     source: DetectionSource = DetectionSource.DEFAULT,
     onStyleChanged: (MosaicStyleOption) -> Unit = {},
     onBack: () -> Unit
@@ -141,7 +142,7 @@ fun ResultScreen(
                                 selected = currentStyleOption,
                                 onSelected = { option ->
                                     currentStyleOption = option
-                                    currentStyle = option.toMosaicStyle()
+                                    currentStyle = option.toMosaicStyle(mosaicStrength)
                                     saveMosaicStyleOption(context, option)
                                     onStyleChanged(option)
                                 }

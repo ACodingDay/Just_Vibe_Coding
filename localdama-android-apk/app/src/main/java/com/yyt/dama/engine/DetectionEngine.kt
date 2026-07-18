@@ -17,6 +17,30 @@ import kotlin.math.min
  */
 
 /**
+ * 按行分组：两个框垂直方向有重叠则视为同一行。
+ *
+ * 供 `OcrFacadeImpl`（行级打码区域）与 `OcrTextProbe`（行级识别）共用，
+ * 保证打码区域与识别区域使用同一种行划分。
+ *
+ * @param boxes OCR 检测到的原始文本框
+ * @return 按 top 排序的行列表，每行内保持加入顺序
+ */
+fun groupBoxesByRows(boxes: List<Rect>): List<List<Rect>> {
+    val rows = mutableListOf<MutableList<Rect>>()
+    for (box in boxes.sortedBy { it.top }) {
+        val existingRow = rows.find { row ->
+            row.any { min(it.bottom, box.bottom) - max(it.top, box.top) > 0 }
+        }
+        if (existingRow != null) {
+            existingRow.add(box)
+        } else {
+            rows.add(mutableListOf(box))
+        }
+    }
+    return rows
+}
+
+/**
  * 对 OCR 原始框按行分组后统一扩展高度。
  *
  * 同一行内的文本框（垂直重叠）共享该行最大框高度作为扩展基准，
@@ -26,7 +50,8 @@ import kotlin.math.min
  * @param bitmap  原始图片
  * @param expand  扩展比例，0.2 表示上下各扩展行高度的 20%
  *
- * 已公开供 `com.yyt.dama.ocr.OcrFacadeImpl` 调用（阶段三-8 提取）。
+ * 注意：已验证 det 框会漏掉行首/行尾字符且框高偏矮（见 OcrTextProbe），
+ * 生产打码已改用行级区域（OcrFacadeImpl），本函数保留供参考。
  */
 fun expandOcrBoxes(
     boxes: List<Rect>,

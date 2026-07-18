@@ -25,6 +25,30 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _isTestRunning = MutableStateFlow(false)
     val isTestRunning: StateFlow<Boolean> = _isTestRunning.asStateFlow()
 
+    /**
+     * 加载 assets 下的 test.jpg（两遍解码 + 长边 2048 降采样 + sRGB）。
+     *
+     * @throws java.io.FileNotFoundException 测试图片不存在时抛出
+     */
+    private suspend fun loadTestBitmap(): android.graphics.Bitmap = withContext(Dispatchers.IO) {
+        if ("test.jpg" !in (ctx.assets.list("") ?: emptyArray())) {
+            throw java.io.FileNotFoundException("test.jpg (asset missing)")
+        }
+        val bytes = ctx.assets.open("test.jpg").readBytes()
+        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+        val m = maxOf(opts.outWidth, opts.outHeight)
+        opts.inSampleSize = if (m > 2048) {
+            var s = 1; while (s * 2048 < m) s *= 2; s
+        } else 1
+        opts.inJustDecodeBounds = false
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            opts.inPreferredColorSpace =
+                android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
+        }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)!!
+    }
+
     fun runTestDetection(
         onSuccess: (bitmap: android.graphics.Bitmap, regions: List<android.graphics.Rect>) -> Unit,
         onError: (Exception) -> Unit = {}
@@ -37,30 +61,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _isTestRunning.value = true
         viewModelScope.launch {
             try {
-                // 先在主线程检查测试图片是否存在（避免 onError 在 IO 线程调用 Toast 导致崩溃）
-                val assetExists = withContext(Dispatchers.IO) {
-                    "test.jpg" in (ctx.assets.list("") ?: emptyArray())
-                }
-                if (!assetExists) {
-                    onError(java.io.FileNotFoundException("test.jpg (asset missing)"))
-                    return@launch
-                }
-
-                val bitmap = withContext(Dispatchers.IO) {
-                    val bytes = ctx.assets.open("test.jpg").readBytes()
-                    val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
-                    val m = maxOf(opts.outWidth, opts.outHeight)
-                    opts.inSampleSize = if (m > 2048) {
-                        var s = 1; while (s * 2048 < m) s *= 2; s
-                    } else 1
-                    opts.inJustDecodeBounds = false
-                    if (android.os.Build.VERSION.SDK_INT >= 33) {
-                        opts.inPreferredColorSpace =
-                            android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
-                    }
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)!!
-                }
+                val bitmap = loadTestBitmap()
 //                Log.d("Dama/HomeVM", "bitmap decoded: ${bitmap.width}x${bitmap.height}")
 
                 val result = withContext(Dispatchers.IO) {
@@ -88,29 +89,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _isTestRunning.value = true
         viewModelScope.launch {
             try {
-                val assetExists = withContext(Dispatchers.IO) {
-                    "test.jpg" in (ctx.assets.list("") ?: emptyArray())
-                }
-                if (!assetExists) {
-                    onError(java.io.FileNotFoundException("test.jpg (asset missing)"))
-                    return@launch
-                }
-
-                val bitmap = withContext(Dispatchers.IO) {
-                    val bytes = ctx.assets.open("test.jpg").readBytes()
-                    val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
-                    val m = maxOf(opts.outWidth, opts.outHeight)
-                    opts.inSampleSize = if (m > 2048) {
-                        var s = 1; while (s * 2048 < m) s *= 2; s
-                    } else 1
-                    opts.inJustDecodeBounds = false
-                    if (android.os.Build.VERSION.SDK_INT >= 33) {
-                        opts.inPreferredColorSpace =
-                            android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
-                    }
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)!!
-                }
+                val bitmap = loadTestBitmap()
 
                 val result = withContext(Dispatchers.IO) {
                     OcrFacadeImpl(ctx).detect(DetectionRequest(bitmap = bitmap, debug = true))
@@ -119,6 +98,39 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 bitmap.recycle()
                 onSuccess(result.debugBitmap!!)
             } catch (e: Exception) {
+                onError(e)
+            } finally {
+                _isTestRunning.value = false
+            }
+        }
+    }
+
+    /**
+     * 文本识别测试 — 按 OCR 测试的搜索区做 det 检测 + 整行 rec 识别，
+     * 识别到的文本/数字打印到日志（tag: OCR-Probe）。
+     *
+     * @param onDone 成功回调，参数为识别到的文本行总数
+     */
+    fun runTextRecognitionTest(
+        onDone: (lineCount: Int) -> Unit = {},
+        onError: (Exception) -> Unit = {}
+    ) {
+        if (_isTestRunning.value) return
+        _isTestRunning.value = true
+        viewModelScope.launch {
+            try {
+                val bitmap = loadTestBitmap()
+
+                val results = withContext(Dispatchers.IO) {
+                    com.yyt.dama.ocr.OcrTextProbe.probe(ctx, bitmap)
+                }
+                val lineCount = results.sumOf { it.lines.size }
+                Log.d("Dama/HomeVM", "文本识别测试完成: ${results.size} 字段, $lineCount 行")
+
+                bitmap.recycle()
+                onDone(lineCount)
+            } catch (e: Exception) {
+                Log.e("Dama/HomeVM", "文本识别测试失败", e)
                 onError(e)
             } finally {
                 _isTestRunning.value = false

@@ -17,7 +17,7 @@ import kotlin.math.roundToInt
  * PP-OCRv5 检测策略 — 封装 v5 模型的完整检测流程。
  *
  * 完整封装：
- * - 模型加载: `assets/models/det_v5.onnx`
+ * - 模型加载: `assets/models/Paddle/det_v5.onnx`
  * - 预处理: maxSide=960, 对齐 32, BGR 通道, ImageNet 归一化
  *   （mean=[0.406, 0.456, 0.485], std=[0.225, 0.224, 0.229]）
  * - 推理: ONNX Runtime, intraOpNumThreads=4, ALL_OPT
@@ -391,6 +391,6 @@ class PpOcrV5Strategy(context: Context) : OcrStrategy {
 
     private companion object {
         private const val TAG = "OCR"
-        private const val MODEL_PATH = "models/det_v5.onnx"
+        private const val MODEL_PATH = "models/Paddle/det_v5.onnx"
     }
 }

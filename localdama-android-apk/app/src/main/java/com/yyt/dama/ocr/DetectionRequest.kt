@@ -13,7 +13,8 @@ import com.yyt.dama.feature.idcard.CardSide
  * @property side 证件正反面，默认 [CardSide.FRONT]
  * @property orientation 证件显示方向，默认 [CardOrientation.LANDSCAPE]
  * @property searchPadding 搜索区扩展比例，`null` 表示使用策略默认值（通常 0.2）
- * @property finalExpand 最终打码区扩展比例，`null` 表示使用策略默认值（通常 0.2）
+ * @property finalExpand 打码区域行高扩展倍数（行框并集上下各扩多少倍行高），
+ *   `null` 表示使用策略默认值（1.0）
  * @property debug 是否生成调试可视化图，`true` 时 [DetectionResult.debugBitmap] 非空
  */
 data class DetectionRequest(

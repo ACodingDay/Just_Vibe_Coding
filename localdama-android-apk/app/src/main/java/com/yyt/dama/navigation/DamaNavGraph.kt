@@ -176,6 +176,33 @@ fun DamaNavGraph(
                         }
                     )
                 },
+                onTestDoubleClick = {
+                    homeViewModel.runTextRecognitionTest(
+                        onDone = { lineCount ->
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = context.getString(
+                                        R.string.ocr_text_test_done, lineCount
+                                    ),
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
+                        },
+                        onError = { e ->
+                            Log.w(TAG, "Text recognition test failed: ${e.message}")
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = context.getString(
+                                        R.string.ocr_text_test_failed,
+                                        e.message?.substringBefore('\n')
+                                            ?: e.javaClass.simpleName
+                                    ),
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
+                        }
+                    )
+                },
                 onSettingsClick = {
 //                    Log.d(TAG, "click → Settings")
                     navController.navigate(Route.Settings.path)
@@ -252,8 +279,9 @@ fun DamaNavGraph(
                 ResultScreen(
                     originalBitmap = bmp,
                     detectedRegions = regions,
-                    initialStyle = mosaicStyleOption.toMosaicStyle(),
+                    initialStyle = mosaicStyleOption.toMosaicStyle(settingsRepo.loadMosaicStrength()),
                     initialStyleOption = mosaicStyleOption,
+                    mosaicStrength = settingsRepo.loadMosaicStrength(),
                     source = source,
                     onStyleChanged = { option ->
                         mosaicStyleOption = option

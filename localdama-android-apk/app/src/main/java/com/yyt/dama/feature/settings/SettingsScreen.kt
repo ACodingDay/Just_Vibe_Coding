@@ -41,12 +41,37 @@ enum class MosaicStyleOption {
     BLUR,
     PIXELATE;
 
-    fun toMosaicStyle(): MosaicStyle = when (this) {
-        FILL_WHITE -> MosaicStyle.FillWhite
-        BLUR -> MosaicStyle.Blur()
-        PIXELATE -> MosaicStyle.Pixelate()
+    /**
+     * 将选项转换为具体的 [MosaicStyle] 实例，并根据 [strength] 计算打码参数。
+     *
+     * [strength] 取值 0.0~1.0（来自设置页打码强度滑动条），
+     * 线性映射到各风格的 blockSize / radius / noise 参数：
+     * - Pixelate: blockSize 8~40, noise 0~40
+     * - Blur: radius 8~32, noise 0~40
+     * - FillWhite: 无参数，不受强度影响
+     *
+     * strength=0.5（默认值）时输出与原硬编码默认值一致：
+     * Pixelate(24, 20)、Blur(20, 20)。
+     */
+    fun toMosaicStyle(strength: Float): MosaicStyle {
+        val s = strength.coerceIn(0f, 1f)
+        return when (this) {
+            FILL_WHITE -> MosaicStyle.FillWhite
+            BLUR -> MosaicStyle.Blur(
+                radius = lerp(8, 32, s),
+                noise = lerp(0, 40, s)
+            )
+            PIXELATE -> MosaicStyle.Pixelate(
+                blockSize = lerp(8, 40, s),
+                noise = lerp(0, 40, s)
+            )
+        }
     }
 }
+
+/** 线性插值：[strength]=0 返回 [start]，[strength]=1 返回 [end] */
+private fun lerp(start: Int, end: Int, strength: Float): Int =
+    (start + (end - start) * strength).toInt()
 
 fun getSettingsPrefs(context: Context): SharedPreferences =
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
