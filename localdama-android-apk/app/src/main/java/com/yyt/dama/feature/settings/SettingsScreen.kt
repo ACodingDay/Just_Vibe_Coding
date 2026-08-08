@@ -6,14 +6,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.yyt.dama.R
@@ -122,6 +122,7 @@ fun saveFullscreen(context: Context, enabled: Boolean) {
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onLicensesClick: () -> Unit,
     mainViewModel: MainViewModel
 ) {
     val settingsViewModel: SettingsViewModel = viewModel()
@@ -156,7 +157,7 @@ fun SettingsScreen(
                 // Theme mode
                 var showThemeDialog by remember { mutableStateOf(false) }
                 SettingsRow(
-                    icon = Icons.Default.DarkMode,
+                    icon = painterResource(R.drawable.ic_dark_mode),
                     title = stringResource(R.string.settings_theme_mode),
                     subtitle = when (currentThemeMode) {
                         ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
@@ -182,7 +183,7 @@ fun SettingsScreen(
                 // Theme color selector
                 var showColorDialog by remember { mutableStateOf(false) }
                 SettingsRow(
-                    icon = Icons.Default.Palette,
+                    icon = painterResource(R.drawable.ic_palette),
                     title = stringResource(R.string.settings_theme_color),
                     subtitle = when (currentThemeColor) {
                         ThemeColor.CLASSIC -> stringResource(R.string.settings_theme_color_classic)
@@ -207,7 +208,7 @@ fun SettingsScreen(
 
                 // Language (placeholder)
                 SettingsRow(
-                    icon = Icons.Default.Language,
+                    icon = painterResource(R.drawable.ic_language),
                     title = stringResource(R.string.settings_language),
                     subtitle = stringResource(R.string.settings_language_desc),
                     onClick = {},
@@ -218,7 +219,7 @@ fun SettingsScreen(
 
                 // 隐藏状态栏（全屏）
                 SettingsSwitchRow(
-                    icon = Icons.Default.Fullscreen,
+                    icon = painterResource(R.drawable.ic_fullscreen),
                     title = stringResource(R.string.settings_fullscreen),
                     subtitle = stringResource(R.string.settings_fullscreen_desc),
                     checked = currentFullscreen,
@@ -252,7 +253,7 @@ fun SettingsScreen(
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
-                                        Icons.Default.BlurOn,
+                                        painterResource(R.drawable.ic_blur),
                                         contentDescription = null,
                                         modifier = Modifier.size(20.dp),
                                         tint = MaterialTheme.colorScheme.onPrimaryContainer
@@ -318,7 +319,7 @@ fun SettingsScreen(
             SettingsCard {
                 var showOcrModelDialog by remember { mutableStateOf(false) }
                 SettingsRow(
-                    icon = Icons.Default.DocumentScanner,
+                    icon = painterResource(R.drawable.ic_scan),
                     title = stringResource(R.string.settings_ocr_model),
                     subtitle = ocrModelOption.displayName,
                     onClick = { showOcrModelDialog = true }
@@ -346,7 +347,7 @@ fun SettingsScreen(
 
             SettingsCard {
                 SettingsRow(
-                    icon = Icons.Default.Info,
+                    icon = painterResource(R.drawable.ic_info),
                     title = stringResource(R.string.settings_version),
                     subtitle = stringResource(R.string.settings_version_value),
                     onClick = {}
@@ -355,10 +356,19 @@ fun SettingsScreen(
                 SettingsDivider()
 
                 SettingsRow(
-                    icon = Icons.Default.Description,
+                    icon = painterResource(R.drawable.ic_document),
                     title = stringResource(R.string.settings_license),
                     subtitle = stringResource(R.string.settings_license_value),
                     onClick = {}
+                )
+
+                SettingsDivider()
+
+                SettingsRow(
+                    icon = painterResource(R.drawable.ic_code),
+                    title = stringResource(R.string.settings_oss_licenses),
+                    subtitle = stringResource(R.string.settings_oss_licenses_desc),
+                    onClick = onLicensesClick
                 )
             }
 
@@ -398,7 +408,7 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
 /** Individual settings row with icon, title, subtitle */
 @Composable
 private fun SettingsRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: Painter,
     title: String,
     subtitle: String,
     onClick: () -> Unit,
@@ -452,7 +462,7 @@ private fun SettingsRow(
 /** Settings row with a Switch toggle */
 @Composable
 private fun SettingsSwitchRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: Painter,
     title: String,
     subtitle: String,
     checked: Boolean,
@@ -613,7 +623,7 @@ private fun ThemeColorDialog(
                             Spacer(Modifier.weight(1f))
                             if (color == currentColor) {
                                 Icon(
-                                    Icons.Default.Check,
+                                    painterResource(R.drawable.ic_check),
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
@@ -676,7 +686,7 @@ private fun OcrModelDialog(
                             Spacer(Modifier.weight(1f))
                             if (model == currentModel) {
                                 Icon(
-                                    Icons.Default.Check,
+                                    painterResource(R.drawable.ic_check),
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)

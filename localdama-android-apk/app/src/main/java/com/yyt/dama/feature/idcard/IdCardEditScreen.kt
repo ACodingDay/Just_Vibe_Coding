@@ -1,7 +1,6 @@
 package com.yyt.dama.feature.idcard
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,11 +10,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddPhotoAlternate
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +31,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -49,6 +44,7 @@ import com.yyt.dama.ocr.DetectionRequest
 import com.yyt.dama.ocr.OcrFacadeImpl
 import com.yyt.dama.ui.animation.bounceClick
 import com.yyt.dama.ui.components.DamaTopBar
+import com.yyt.dama.ui.components.ImageLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -80,19 +76,7 @@ fun IdCardEditScreen(
         uri?.let {
             scope.launch {
                 val bmp = withContext(Dispatchers.IO) {
-                    val bytes = context.contentResolver.openInputStream(it)?.use { s ->
-                        s.readBytes()
-                    } ?: return@withContext null
-
-                    // 两遍解码：先取尺寸，再用 inSampleSize 高效加载
-                    val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
-                    val m = max(opts.outWidth, opts.outHeight)
-                    opts.inSampleSize = if (m > 2048) {
-                        var s = 1; while (s * 2048 < m) s *= 2; s
-                    } else 1
-                    opts.inJustDecodeBounds = false
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+                    ImageLoader.decodeFromUri(context, it)
                 }
                 // 回收旧图再赋新值，避免内存泄漏
                 val old = selectedBitmap
@@ -128,7 +112,7 @@ fun IdCardEditScreen(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = Icons.Default.AddPhotoAlternate,
+                                painter = painterResource(R.drawable.ic_add_photo),
                                 contentDescription = null,
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer
@@ -167,7 +151,7 @@ fun IdCardEditScreen(
                         shape = MaterialTheme.shapes.medium,
                     ) {
                         Icon(
-                            Icons.Default.PhotoLibrary,
+                            painterResource(R.drawable.ic_photo_library),
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )
@@ -365,7 +349,7 @@ fun IdCardEditScreen(
                                         }
                                     ) {
                                         Icon(
-                                            Icons.Default.ScreenRotation,
+                                            painterResource(R.drawable.ic_rotate_left),
                                             contentDescription = stringResource(R.string.id_card_toggle_orientation),
                                             modifier = Modifier.size(18.dp),
                                             tint = MaterialTheme.colorScheme.onPrimaryContainer

@@ -23,7 +23,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -31,15 +30,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.FlashOff
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -56,13 +46,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -75,6 +66,7 @@ import androidx.core.content.ContextCompat
 import com.yyt.dama.R
 import com.yyt.dama.ocr.DetectionRequest
 import com.yyt.dama.ocr.OcrFacadeImpl
+import com.yyt.dama.ui.components.PreviewConfirmOverlay
 import com.yyt.dama.ui.theme.CameraDarkColorScheme
 import com.yyt.dama.util.CropUtils
 import com.yyt.dama.util.OverlayPercentRect
@@ -398,7 +390,7 @@ private fun CameraScreenContent(
             ) {
                 IconButton(onClick = onBack) {
                     Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
+                        painterResource(R.drawable.ic_arrow_back),
                         contentDescription = stringResource(R.string.back),
                         tint = MaterialTheme.colorScheme.onBackground
                     )
@@ -406,7 +398,7 @@ private fun CameraScreenContent(
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { flashOn = !flashOn }) {
                     Icon(
-                        if (flashOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                        if (flashOn) painterResource(R.drawable.ic_flash_on) else painterResource(R.drawable.ic_flash_off),
                         contentDescription = stringResource(R.string.id_card_flash),
                         tint = if (flashOn) MaterialTheme.colorScheme.error
                                else WhiteSecondary
@@ -424,14 +416,14 @@ private fun CameraScreenContent(
             ) {
                 SideTab(
                     label = stringResource(R.string.id_card_side_front),
-                    icon = Icons.Default.Face,
+                    icon = painterResource(R.drawable.ic_face),
                     isSelected = currentSide == CardSide.FRONT,
                     onClick = { currentSide = CardSide.FRONT }
                 )
                 Spacer(Modifier.width(16.dp))
                 SideTab(
                     label = stringResource(R.string.id_card_side_back),
-                    icon = Icons.Default.Shield,
+                    icon = painterResource(R.drawable.ic_shield),
                     isSelected = currentSide == CardSide.BACK,
                     onClick = { currentSide = CardSide.BACK }
                 )
@@ -498,7 +490,7 @@ private fun CameraScreenContent(
                 verticalArrangement = Arrangement.Center
             ) {
                 Icon(
-                    Icons.Default.PhotoLibrary, null,
+                    painterResource(R.drawable.ic_photo_library), null,
                     modifier = Modifier.size(64.dp),
                     tint = WhiteSecondary
                 )
@@ -719,7 +711,7 @@ private fun CameraOverlay(
 @Composable
 private fun SideTab(
     label: String,
-    icon: ImageVector,
+    icon: Painter,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
@@ -745,7 +737,7 @@ private fun SideTab(
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Icon(
-            imageVector = icon,
+            painter = icon,
             contentDescription = null,
             tint = textColor,
             modifier = Modifier.size(16.dp)
@@ -783,117 +775,6 @@ private fun ShutterButton(enabled: Boolean, onClick: () -> Unit) {
             Modifier.size(58.dp)
                 .clip(CircleShape)
                 .background(ShutterFill.copy(alpha = alpha))
-        )
-    }
-}
-
-// ═══════════════════════════════════════════════════════
-//  裁剪预览确认界面
-// ═══════════════════════════════════════════════════════
-
-/**
- * 拍照裁剪后的预览确认界面。
- *
- * 显示裁剪后的卡片图片，让用户确认是否满意。
- * - 点击 ✓（绿色）→ 进入 OCR 识别
- * - 点击 ✕（红色）→ 放弃图片，返回相机
- *
- * 参考支付宝身份证拍照的"确认裁剪区域"交互模式。
- */
-@Composable
-private fun PreviewConfirmOverlay(
-    bitmap: Bitmap,
-    onConfirm: () -> Unit,
-    onDiscard: () -> Unit
-) {
-    val img = bitmap.asImageBitmap()
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.85f))
-    ) {
-        // ── 中央：裁剪后的卡片图片 ──
-        Card(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxWidth(0.85f)
-                .padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.Transparent
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-        ) {
-            Image(
-                bitmap = img,
-                contentDescription = "裁剪预览",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(bitmap.width.toFloat() / bitmap.height)
-            )
-        }
-
-        // ── 底部：确认 / 放弃按钮 ──
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 40.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-
-
-            // 两个按钮
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(64.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 放弃按钮（红色 ✕）
-                ConfirmActionButton(
-                    icon = Icons.Default.Close,
-                    contentDescription = "放弃",
-                    containerColor = Color(0xFFE53935).copy(alpha = 0.15f),
-                    iconTint = Color(0xFFE53935),
-                    onClick = onDiscard
-                )
-                // 确认按钮（蓝色 ✓）
-                ConfirmActionButton(
-                    icon = Icons.Default.Check,
-                    contentDescription = "确认",
-                    containerColor = Color(0xFF2196F3).copy(alpha = 0.15f),
-                    iconTint = Color(0xFF2196F3),
-                    onClick = onConfirm
-                )
-            }
-        }
-    }
-}
-
-/**
- * 预览确认界面的操作按钮（圆形，带半透明背景）。
- */
-@Composable
-private fun ConfirmActionButton(
-    icon: ImageVector,
-    contentDescription: String,
-    containerColor: Color,
-    iconTint: Color,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(72.dp)
-            .clip(CircleShape)
-            .background(containerColor)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = iconTint,
-            modifier = Modifier.size(36.dp)
         )
     }
 }

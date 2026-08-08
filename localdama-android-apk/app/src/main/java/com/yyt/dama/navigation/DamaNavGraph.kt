@@ -27,6 +27,7 @@ import com.yyt.dama.feature.idcard.IdCardCameraScreen
 import com.yyt.dama.feature.idcard.IdCardEditScreen
 import com.yyt.dama.feature.result.ResultScreen
 import com.yyt.dama.feature.sensitive.SensitiveInfoScreen
+import com.yyt.dama.feature.settings.LicensesScreen
 import com.yyt.dama.feature.settings.SettingsScreen
 import com.yyt.dama.ui.theme.ThemeMode
 import com.yyt.dama.viewmodel.HomeViewModel
@@ -43,6 +44,7 @@ sealed class Route(val path: String) {
     data object SensitiveInfo : Route("sensitive_info")
     data object Result : Route("result")
     data object Settings : Route("settings")
+    data object Licenses : Route("licenses")
 }
 
 /**
@@ -240,7 +242,13 @@ fun DamaNavGraph(
         composable(Route.SensitiveInfo.path) {
             val safePop = rememberSafePop(navController)
             SensitiveInfoScreen(
-                onBack = safePop
+                onBack = safePop,
+                onDetectionDone = { bmp, regions ->
+                    DetectionRepository.setResult(bmp, regions, DetectionSource.SENSITIVE)
+                    navController.navigate(Route.Result.path) {
+                        popUpTo(Route.SensitiveInfo.path) { inclusive = true }
+                    }
+                }
             )
         }
 
@@ -310,8 +318,16 @@ fun DamaNavGraph(
 //                    Log.d(TAG, "[Settings] onBack → popBackStack")
                     safePop()
                 },
+                onLicensesClick = {
+                    navController.navigate(Route.Licenses.path)
+                },
                 mainViewModel = mainViewModel
             )
+        }
+
+        composable(Route.Licenses.path) {
+            val safePop = rememberSafePop(navController)
+            LicensesScreen(onBack = safePop)
         }
     }
 }

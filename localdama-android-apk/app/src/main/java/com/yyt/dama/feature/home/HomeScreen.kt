@@ -26,12 +26,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Badge
-import androidx.compose.material.icons.filled.Construction
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Science
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,7 +44,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -95,7 +90,7 @@ fun HomeScreen(
                 actions = {
                     IconButton(onClick = onSettingsClick) {
                         Icon(
-                            imageVector = Icons.Default.Settings,
+                            painter = painterResource(R.drawable.ic_settings),
                             contentDescription = stringResource(R.string.settings),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -145,28 +140,28 @@ fun HomeScreen(
                     ) {
                         StaggeredFeatureCard(
                             modifier = Modifier.weight(1f), index = 0,
-                            icon = Icons.Default.Badge,
+                            icon = painterResource(R.drawable.ic_badge),
                             title = stringResource(R.string.home_id_card),
                             subtitle = stringResource(R.string.home_id_card_desc),
                             enabled = true, isDarkTheme = isDarkTheme, onClick = onIdCardClick
                         )
                         StaggeredFeatureCard(
                             modifier = Modifier.weight(1f), index = 1,
-                            icon = Icons.Default.Lock,
+                            icon = painterResource(R.drawable.ic_lock),
                             title = stringResource(R.string.home_sensitive_info),
                             subtitle = stringResource(R.string.home_sensitive_info_desc),
                             enabled = true, isDarkTheme = isDarkTheme, onClick = onSensitiveInfoClick
                         )
                         StaggeredFeatureCard(
                             modifier = Modifier.weight(1f), index = 2,
-                            icon = Icons.Default.Science,
+                            icon = painterResource(R.drawable.ic_science),
                             title = stringResource(R.string.home_ocr_test),
                             subtitle = stringResource(R.string.home_ocr_test_desc),
                             enabled = true, isDarkTheme = isDarkTheme, onClick = onTestClick
                         )
                         StaggeredFeatureCard(
                             modifier = Modifier.weight(1f), index = 3,
-                            icon = Icons.Default.Construction,
+                            icon = painterResource(R.drawable.ic_construction),
                             title = stringResource(R.string.home_more_features),
                             subtitle = stringResource(R.string.home_coming_soon),
                             enabled = false, isDarkTheme = isDarkTheme, onClick = {}
@@ -181,7 +176,7 @@ fun HomeScreen(
                         StaggeredFeatureCard(
                             modifier = Modifier.weight(1f),
                             index = 0,
-                            icon = Icons.Default.Badge,
+                            icon = painterResource(R.drawable.ic_badge),
                             title = stringResource(R.string.home_id_card),
                             subtitle = stringResource(R.string.home_id_card_desc),
                             enabled = true,
@@ -191,7 +186,7 @@ fun HomeScreen(
                         StaggeredFeatureCard(
                             modifier = Modifier.weight(1f),
                             index = 1,
-                            icon = Icons.Default.Lock,
+                            icon = painterResource(R.drawable.ic_lock),
                             title = stringResource(R.string.home_sensitive_info),
                             subtitle = stringResource(R.string.home_sensitive_info_desc),
                             enabled = true,
@@ -209,7 +204,7 @@ fun HomeScreen(
                         StaggeredFeatureCard(
                             modifier = Modifier.weight(1f),
                             index = 2,
-                            icon = Icons.Default.Science,
+                            icon = painterResource(R.drawable.ic_science),
                             title = stringResource(R.string.home_ocr_test),
                             subtitle = stringResource(R.string.home_ocr_test_desc),
                             enabled = true,
@@ -221,7 +216,7 @@ fun HomeScreen(
                         StaggeredFeatureCard(
                             modifier = Modifier.weight(1f),
                             index = 3,
-                            icon = Icons.Default.Construction,
+                            icon = painterResource(R.drawable.ic_construction),
                             title = stringResource(R.string.home_more_features),
                             subtitle = stringResource(R.string.home_coming_soon),
                             enabled = false,
@@ -270,7 +265,7 @@ fun HomeScreen(
 private fun StaggeredFeatureCard(
     modifier: Modifier = Modifier,
     index: Int,
-    icon: ImageVector,
+    icon: Painter,
     title: String,
     subtitle: String,
     enabled: Boolean,
@@ -313,7 +308,7 @@ private fun StaggeredFeatureCard(
 
 @Composable
 private fun FeatureCard(
-    icon: ImageVector,
+    icon: Painter,
     title: String,
     subtitle: String,
     accentIndex: Int,
@@ -360,7 +355,7 @@ private fun FeatureCard(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = icon,
+                        painter = icon,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
                         tint = accentColor.copy(alpha = alpha)

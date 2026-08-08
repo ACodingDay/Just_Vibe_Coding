@@ -8,9 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +18,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -181,7 +179,7 @@ fun ResultScreen(
                                 shape = MaterialTheme.shapes.medium
                             ) {
                                 Icon(
-                                    Icons.Default.Save,
+                                    painterResource(R.drawable.ic_save),
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -211,7 +209,7 @@ fun ResultScreen(
                                 )
                             ) {
                                 Icon(
-                                    Icons.Default.Share,
+                                    painterResource(R.drawable.ic_share),
                                     contentDescription = stringResource(R.string.result_share)
                                 )
                             }

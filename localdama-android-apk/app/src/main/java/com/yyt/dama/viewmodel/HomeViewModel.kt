@@ -1,12 +1,12 @@
 package com.yyt.dama.viewmodel
 
 import android.app.Application
-import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.yyt.dama.ocr.DetectionRequest
 import com.yyt.dama.ocr.OcrFacadeImpl
+import com.yyt.dama.ui.components.ImageLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +26,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val isTestRunning: StateFlow<Boolean> = _isTestRunning.asStateFlow()
 
     /**
-     * 加载 assets 下的 test.jpg（两遍解码 + 长边 2048 降采样 + sRGB）。
+     * 加载 assets 下的 test.jpg（两遍解码 + 长边 2048 降采样 + sRGB，复用 [ImageLoader]）。
      *
      * @throws java.io.FileNotFoundException 测试图片不存在时抛出
      */
@@ -35,18 +35,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             throw java.io.FileNotFoundException("test.jpg (asset missing)")
         }
         val bytes = ctx.assets.open("test.jpg").readBytes()
-        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
-        val m = maxOf(opts.outWidth, opts.outHeight)
-        opts.inSampleSize = if (m > 2048) {
-            var s = 1; while (s * 2048 < m) s *= 2; s
-        } else 1
-        opts.inJustDecodeBounds = false
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
-            opts.inPreferredColorSpace =
-                android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
-        }
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)!!
+        ImageLoader.decode(bytes)
+            ?: throw java.io.IOException("test.jpg decode failed")
     }
 
     fun runTestDetection(

@@ -71,7 +71,10 @@ val landscapeTemplate = listOf(
     IdCardField("出生日期",     0.05f, 0.38f, 0.48f, 0.05f, labelWidthPct = 0.12f),
     // 住址: OCR 框 y=333~404(此轮), 上下各冗余一行 → y 覆盖 259~434
     IdCardField("住址",         0.05f, 0.51f, 0.50f, 0.22f, labelWidthPct = 0.12f),
-    IdCardField("照片",         0.58f, 0.07f, 0.38f, 0.50f, isDashed = true),
+    // 照片: 对齐拍照模式取景框 locator（IdCardCameraConfig.FRONT_LOCATOR_*），
+    // 取景框按 1.55 比例裁剪，人像实际落在 left=0.597/top=0.174/w=0.360/h=0.579，
+    // 模板坐标直接匹配此区域，确保能完整包含实际拍到的人像
+    IdCardField("照片",         0.595f, 0.175f, 0.362f, 0.578f, isDashed = true),
     IdCardField("身份号码",     0.05f, 0.83f, 0.88f, 0.05f, labelWidthPct = 0.25f),
 )
 
@@ -89,7 +92,7 @@ val portraitTemplate = listOf(
     IdCardField("民族",         0.26f, 0.80f, 0.05f, 0.20f, labelWidthPct = 0.08f),
     IdCardField("出生日期",     0.38f, 0.52f, 0.05f, 0.48f),
     IdCardField("住址",         0.51f, 0.50f, 0.22f, 0.50f),
-    IdCardField("照片",         0.07f, 0.04f, 0.50f, 0.38f, isDashed = true),
+    IdCardField("照片",         0.175f, 0.043f, 0.578f, 0.362f, isDashed = true),
     IdCardField("身份号码",     0.83f, 0.05f, 0.05f, 0.88f),
 )
 
@@ -137,8 +140,8 @@ private fun dashedFieldCenter(fields: List<IdCardField>): Pair<Float, Float> {
 
 /** 正面（人像面）锚点：头像中心，取自 landscapeTemplate 照片字段中心 */
 val frontAnchor = CardAnchor(
-    anchorX = dashedFieldCenter(landscapeTemplate).first,   // 0.78
-    anchorY = dashedFieldCenter(landscapeTemplate).second,  // 0.31
+    anchorX = dashedFieldCenter(landscapeTemplate).first,   // 0.776
+    anchorY = dashedFieldCenter(landscapeTemplate).second,  // 0.464
     iconLabel = "头像"
 )
 

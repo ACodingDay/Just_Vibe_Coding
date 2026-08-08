@@ -1,0 +1,44 @@
+[
+  {
+    "name": "Kotlin",
+    "author": "JetBrains",
+    "license": "Apache License 2.0",
+    "url": "https://kotlinlang.org/"
+  },
+  {
+    "name": "Jetpack Compose",
+    "author": "Google",
+    "license": "Apache License 2.0",
+    "url": "https://developer.android.com/jetpack/compose"
+  },
+  {
+    "name": "Material 3 for Compose",
+    "author": "Google",
+    "license": "Apache License 2.0",
+    "url": "https://developer.android.com/jetpack/androidx/releases/compose-material3"
+  },
+  {
+    "name": "AndroidX Navigation",
+    "author": "Google",
+    "license": "Apache License 2.0",
+    "url": "https://developer.android.com/jetpack/androidx/releases/navigation"
+  },
+  {
+    "name": "CameraX",
+    "author": "Google",
+    "license": "Apache License 2.0",
+    "url": "https://developer.android.com/jetpack/androidx/releases/camera"
+  },
+  {
+    "name": "ONNX Runtime",
+    "author": "Microsoft",
+    "license": "MIT License",
+    "url": "https://github.com/microsoft/onnxruntime"
+  },
+  {
+    "name": "Game Icon Pack",
+    "author": "Nieobie",
+    "license": "CC0 1.0 Universal",
+    "url": "https://github.com/Nieobie/game-icon-pack"
+  }
+]
