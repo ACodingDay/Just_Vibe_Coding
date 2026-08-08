@@ -21,7 +21,9 @@ import com.yyt.dama.ui.components.DamaTopBar
 import com.yyt.dama.ui.components.ImageLoader
 import com.yyt.dama.ui.components.PreviewConfirmOverlay
 import com.yyt.dama.ui.components.rememberPhotoPicker
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -53,10 +55,19 @@ fun SensitiveInfoScreen(
     var pendingBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isProcessing by remember { mutableStateOf(false) }
     var showNoMatchDialog by remember { mutableStateOf(false) }
+    var showErrorDialog by remember { mutableStateOf(false) }
 
-    // 离开页面时回收未处理的预览图，防止 bitmap 泄漏
+    // 检测器持有 det/rec ONNX 模型，页面级复用（多次检测不重复加载），销毁时释放
+    val detector = remember { SensitiveDetector(context) }
+
+    // 离开页面时释放 OCR 模型并回收未处理的预览图，防止模型与 bitmap 泄漏。
+    // 检测进行中不回收 pendingBitmap：IO 线程仍在读它，回收会触发
+    // "recycled bitmap" 崩溃，改由 runDetection 的收尾逻辑负责回收
     DisposableEffect(Unit) {
-        onDispose { pendingBitmap?.recycle() }
+        onDispose {
+            detector.close()
+            if (!isProcessing) pendingBitmap?.recycle()
+        }
     }
 
     // ── 相册选取 ──
@@ -83,7 +94,7 @@ fun SensitiveInfoScreen(
         scope.launch {
             try {
                 val regions = withContext(Dispatchers.IO) {
-                    SensitiveDetector(context).detectSensitiveInfo(bitmap)
+                    detector.detectSensitiveInfo(bitmap)
                 }
                 isProcessing = false
                 if (regions.isEmpty()) {
@@ -91,17 +102,28 @@ fun SensitiveInfoScreen(
                     bitmap.recycle()
                     pendingBitmap = null
                     showNoMatchDialog = true
-                } else {
-                    // 检测成功，移交 bitmap 所有权给 ResultScreen（不在此回收）
+                } else if (coroutineContext.isActive) {
+                    // 检测成功且页面仍在：移交 bitmap 所有权给 ResultScreen（不在此回收）
                     pendingBitmap = null
                     onDetectionDone(bitmap, regions)
+                } else {
+                    // 检测完成时用户已离开页面：回收图片，不再导航
+                    bitmap.recycle()
+                    pendingBitmap = null
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "敏感信息检测失败", e)
+            } catch (e: CancellationException) {
+                // 页面销毁导致协程取消：onDispose 已跳过回收（isProcessing=true），
+                // 在此回收 in-flight 的图片，防止泄漏；不弹任何对话框
                 isProcessing = false
                 bitmap.recycle()
                 pendingBitmap = null
-                showNoMatchDialog = true
+            } catch (e: Exception) {
+                Log.e(TAG, "敏感信息检测失败", e)
+                // 失败≠未命中：弹独立错误弹窗，避免用户误以为图片里没有敏感信息
+                isProcessing = false
+                bitmap.recycle()
+                pendingBitmap = null
+                showErrorDialog = true
             }
         }
     }
@@ -159,6 +181,20 @@ fun SensitiveInfoScreen(
             text = { Text(stringResource(R.string.sensitive_no_match_message)) },
             confirmButton = {
                 TextButton(onClick = { showNoMatchDialog = false }) {
+                    Text(stringResource(R.string.result_dialog_confirm))
+                }
+            }
+        )
+    }
+
+    // 检测失败弹窗（区别于未命中：模型缺失/解码异常等，避免误导用户）
+    if (showErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { showErrorDialog = false },
+            title = { Text(stringResource(R.string.sensitive_detect_failed_title)) },
+            text = { Text(stringResource(R.string.sensitive_detect_failed_message)) },
+            confirmButton = {
+                TextButton(onClick = { showErrorDialog = false }) {
                     Text(stringResource(R.string.result_dialog_confirm))
                 }
             }
@@ -251,8 +287,14 @@ private fun EmptyState(
 
             Spacer(Modifier.height(32.dp))
 
+            // 支持类型由启用中的规则动态生成，避免与 SensitivePattern 列表脱节
+            val supportedTypes = remember {
+                defaultSensitivePatterns()
+                    .filter { it.enabled }
+                    .joinToString(" · ") { it.name }
+            }
             Text(
-                text = stringResource(R.string.sensitive_supported_types),
+                text = "支持：$supportedTypes",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

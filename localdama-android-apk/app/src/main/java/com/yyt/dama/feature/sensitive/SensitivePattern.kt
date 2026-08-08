@@ -7,6 +7,32 @@ package com.yyt.dama.feature.sensitive
  * 不加锚点（匹配子串），由 [SensitiveDetector] 调用 [Regex.find] 判定。
  * 银行卡规则用前后断言保证两侧非数字，与手机号/身份证号天然不重叠。
  */
+
+/** OCR 文本中的空白分隔符：普通/全角/不换行空格、制表符、换行 */
+private val OCR_WHITESPACE_REGEX = Regex("[\\s\u3000\u00A0]+")
+
+/** 空白之外的连字符（仅第二阶段匹配使用，避免拆散邮箱地址中的连字符） */
+private val OCR_HYPHEN_REGEX = Regex("-+")
+
+/**
+ * OCR 文本归一化 — 去掉空白后返回。
+ *
+ * 真实图片上的数字串常带分隔符（"138 1234 5678"、"6222 0202 1234 5678"），
+ * det 输出或 OCR 结果也会在数字间残留空格；若不归一化，正则只能匹配
+ * 连续数字，带分隔符的卡号/手机号会整段漏检。归一化只在匹配前进行，
+ * 打码区域仍按文本框整体覆盖，不影响输出。
+ */
+fun normalizeOcrText(text: String): String = text.replace(OCR_WHITESPACE_REGEX, "")
+
+/**
+ * 第二阶段归一化 — 在去空白基础上再去掉连字符。
+ *
+ * 邮箱地址允许连字符（如 a.b-c@example.com），不能无差别移除，
+ * 因此连字符剥离只在第一阶段（去空白）未命中任何规则时执行，
+ * 用于 "138-1234-5678" 这类带连字符的数字串。
+ */
+internal fun normalizeOcrTextStrict(text: String): String =
+    text.replace(OCR_WHITESPACE_REGEX, "").replace(OCR_HYPHEN_REGEX, "")
 data class SensitivePattern(
     val name: String,
     val regex: Regex,

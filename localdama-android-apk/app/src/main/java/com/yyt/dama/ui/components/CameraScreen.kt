@@ -165,7 +165,11 @@ private fun CameraScreenContent(
             ContextCompat.getMainExecutor(context),
             object : ImageCapture.OnImageCapturedCallback() {
                 override fun onCaptureSuccess(image: ImageProxy) {
-                    val bmp = image.toBitmap()
+                    // 相机预览通常横置取景，ImageProxy.toBitmap() 不带方向校正；
+                    // 不旋转的话竖拍照片的文字会侧躺 90°，OCR 识别率骤降
+                    val bmp = ImageLoader.rotateByDegrees(
+                        image.toBitmap(), image.imageInfo.rotationDegrees
+                    )
                     image.close()
                     isCapturing = false
                     onPhotoCaptured(bmp)

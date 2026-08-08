@@ -65,12 +65,13 @@
     <string name="sensitive_empty_prompt">选择需要打码的图片</string>
     <string name="sensitive_take_photo">拍照识别</string>
     <string name="sensitive_pick_from_gallery">从相册选择</string>
-    <string name="sensitive_supported_types">支持：手机号 · 身份证号 · 邮箱 · 车牌 · 银行卡号</string>
     <string name="sensitive_camera_hint">对准需要打码的内容</string>
     <string name="sensitive_camera_subhint">清晰拍摄文字以提升识别率</string>
     <string name="sensitive_detecting">识别中…</string>
     <string name="sensitive_no_match_title">未识别到敏感信息</string>
     <string name="sensitive_no_match_message">未匹配到手机号、身份证号等敏感信息，请确保文字清晰可见。</string>
+    <string name="sensitive_detect_failed_title">识别失败</string>
+    <string name="sensitive_detect_failed_message">图片解析或文字识别出错，请重新拍照/选择后再试。</string>
 
     <!-- ── 设置 ── -->
     <string name="settings_title">设置</string>

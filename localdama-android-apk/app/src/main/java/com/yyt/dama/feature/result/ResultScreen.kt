@@ -156,13 +156,12 @@ fun ResultScreen(
                             Button(
                                 onClick = {
                                     scope.launch {
-                                        val finalBmp = MosaicEngine.applyMosaic(
-                                            originalBitmap, detectedRegions, currentStyle
-                                        )
+                                        // displayBitmap 即当前风格下的打码渲染（LaunchedEffect
+                                        // 随风格切换同步更新），直接复用它保存，避免第三次
+                                        // 全量打码产生的高峰内存（大图会再分配整幅 IntArray）
                                         val result = withContext(Dispatchers.IO) {
-                                            ImageSaver.saveToGallery(context, finalBmp)
+                                            ImageSaver.saveToGallery(context, displayBitmap)
                                         }
-                                        finalBmp.recycle()
                                         when (result) {
                                             is SaveResult.Success ->
                                                 messageEvents.emit(context.getString(R.string.save_success))
@@ -192,11 +191,9 @@ fun ResultScreen(
 
                             FilledIconButton(
                                 onClick = {
-                                    val finalBmp = MosaicEngine.applyMosaic(
-                                        originalBitmap, detectedRegions, currentStyle
-                                    )
-                                    ImageSaver.shareImage(context, finalBmp)
-                                    finalBmp.recycle()
+                                    // 复用 displayBitmap（当前风格的打码渲染），
+                                    // 不再全量打码一份新图；displayBitmap 由本页管理回收
+                                    ImageSaver.shareImage(context, displayBitmap)
                                 },
                                 modifier = Modifier
                                     .bounceClick()
