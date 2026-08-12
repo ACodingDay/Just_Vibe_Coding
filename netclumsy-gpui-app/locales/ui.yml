@@ -1,0 +1,106 @@
+_version: 2
+
+# 应用自身文案（namespace: netclumsy）
+netclumsy:
+  app.title:
+    zh-CN: NetClumsy
+    en: NetClumsy
+  app.tagline:
+    zh-CN: 网络包劣化工具
+    en: Network Packet Degradation Tool
+  window.capture:
+    zh-CN: 捕获
+    en: Capture
+  window.start:
+    zh-CN: 启动
+    en: Start
+  window.filter.label:
+    zh-CN: 过滤器
+    en: Filter
+  window.filter.placeholder:
+    zh-CN: 输入过滤表达式，如 tcp and tcp.DstPort == 8012
+    en: e.g. tcp and tcp.DstPort == 8012
+  window.stats.rate:
+    zh-CN: 包速率
+    en: Packet Rate
+  window.stats.matched:
+    zh-CN: 匹配数
+    en: Matched Count
+  window.direction.inbound:
+    zh-CN: 入站
+    en: Inbound
+  window.direction.outbound:
+    zh-CN: 出站
+    en: Outbound
+  effect.lag:
+    zh-CN: 延迟 (Lag)
+    en: Lag
+  effect.lag.delay:
+    zh-CN: 延迟 (ms)
+    en: Delay (ms)
+  effect.drop:
+    zh-CN: 丢包 (Drop)
+    en: Drop
+  effect.drop.chance:
+    zh-CN: 概率 (%)
+    en: Chance (%)
+  effect.throttle:
+    zh-CN: 节流 (Throttle)
+    en: Throttle
+  effect.throttle.chance:
+    zh-CN: 触发概率 (%)
+    en: Trigger Chance (%)
+  effect.throttle.timeframe:
+    zh-CN: 时间窗 (ms)
+    en: Timeframe (ms)
+  effect.throttle.drop_throttled:
+    zh-CN: 丢弃节流包
+    en: Drop Throttled
+  effect.bandwidth:
+    zh-CN: 限带宽 (Bandwidth)
+    en: Bandwidth
+  effect.bandwidth.limit:
+    zh-CN: 上限 (KB/s)
+    en: Limit (KB/s)
+  effect.duplicate:
+    zh-CN: 重复 (Duplicate)
+    en: Duplicate
+  effect.duplicate.count:
+    zh-CN: 份数
+    en: Count
+  effect.duplicate.chance:
+    zh-CN: 概率 (%)
+    en: Chance (%)
+  effect.ood:
+    zh-CN: 乱序 (Out of order)
+    en: Out of order
+  effect.ood.chance:
+    zh-CN: 概率 (%)
+    en: Chance (%)
+  effect.tamper:
+    zh-CN: 篡改 (Tamper)
+    en: Tamper
+  effect.tamper.chance:
+    zh-CN: 概率 (%)
+    en: Chance (%)
+  effect.tamper.redo_checksum:
+    zh-CN: 重算校验和
+    en: Redo Checksum
+  effect.reset:
+    zh-CN: 断连 (Set TCP RST)
+    en: Set TCP RST
+  effect.reset.chance:
+    zh-CN: 概率 (%)
+    en: Chance (%)
+  effect.reset.now:
+    zh-CN: RST 下一包
+    en: RST Next Packet
+  status.requires_admin:
+    zh-CN: 需要管理员权限
+    en: Requires Administrator
+  status.running:
+    zh-CN: 运行中
+    en: Running
+  status.stopped:
+    zh-CN: 已停止
+    en: Stopped
