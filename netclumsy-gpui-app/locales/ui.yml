@@ -14,6 +14,12 @@ netclumsy:
   window.start:
     zh-CN: 启动
     en: Start
+  window.stop:
+    zh-CN: 停止
+    en: Stop
+  window.presets:
+    zh-CN: 预设
+    en: Presets
   window.filter.label:
     zh-CN: 过滤器
     en: Filter
@@ -98,9 +104,30 @@ netclumsy:
   status.requires_admin:
     zh-CN: 需要管理员权限
     en: Requires Administrator
+  status.idle:
+    zh-CN: 就绪。输入过滤条件后点击「启动」或先「捕获」验证匹配。
+    en: Ready. Enter filter criteria and click Start, or Capture to verify matching.
   status.running:
     zh-CN: 运行中
     en: Running
+  status.started:
+    zh-CN: 已启动过滤，启用效果后实时生效。
+    en: Started filtering. Enable effects to take effect.
   status.stopped:
-    zh-CN: 已停止
-    en: Stopped
+    zh-CN: 已停止。修改过滤条件后可重新开始。
+    en: Stopped. Edit criteria and start again.
+  status.start_failed:
+    zh-CN: 启动失败
+    en: Failed to start
+  status.filter_syntax_error:
+    zh-CN: 过滤器语法错误
+    en: filter syntax error
+  status.open_device_failed:
+    zh-CN: 打开设备失败（请确认以管理员身份运行）
+    en: failed to open device (make sure running as Administrator)
+  status.thread_failed:
+    zh-CN: 创建线程失败
+    en: failed to create thread
+  status.matched:
+    zh-CN: 匹配包
+    en: matched packets

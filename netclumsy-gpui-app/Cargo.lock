@@ -1619,15 +1619,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "etherparse"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "827292ea592108849932ad8e30218f8b1f21c0dfd0696698a18b5d0aed62d990"
-dependencies = [
- "arrayvec",
-]
-
-[[package]]
 name = "euclid"
 version = "0.22.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3544,9 +3535,10 @@ dependencies = [
  "anyhow",
  "gpui",
  "gpui-component",
+ "rand 0.8.7",
  "rust-embed",
  "rust-i18n 4.2.1",
- "windivert",
+ "windivert-sys",
  "windows 0.48.0",
 ]
 
@@ -6825,18 +6817,6 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
-
-[[package]]
-name = "windivert"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc6b6833a760d1c36b489314a5541a12a39d162dc8341d8f6f400212b96d3df1"
-dependencies = [
- "etherparse",
- "thiserror 1.0.69",
- "windivert-sys",
- "windows 0.48.0",
-]
 
 [[package]]
 name = "windivert-sys"
