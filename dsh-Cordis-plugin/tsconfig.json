@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": ["src", "tests", "demo", "tsdown.config.ts", "vitest.config.ts"],
+  "compilerOptions": {
+    "paths": {
+      "@deepseek-ai/cordis": ["../../deepseek-harness-master/vendor/cordis/lib/types/index.d.ts"],
+      "@deepseek-ai/dsh-invariants": ["../../deepseek-harness-master/packages/runtime-diagnostics/invariants/lib/types/index.d.ts"],
+      "@deepseek-ai/dsh-client-runtime/client": ["../../deepseek-harness-master/packages/client/runtime/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-locale/client": ["../../deepseek-harness-master/packages/client/locale/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-conversation/client": ["../../deepseek-harness-master/packages/client/ui-conversation/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-theme/client": ["../../deepseek-harness-master/packages/client/ui-theme/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-slots": ["../../deepseek-harness-master/packages/client/ui-slots/lib/types/index.d.ts"]
+    }
+  }
+}

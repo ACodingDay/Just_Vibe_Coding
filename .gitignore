@@ -4,4 +4,7 @@
 # WorkBuddy 工作目录（缓存/记忆，不需要提交）
 .workbuddy/
 
+# pnpm 本地存储（依赖缓存，不需要提交）
+.pnpm-store/
+
 # This repo only contains cleanmywin-tauri-app

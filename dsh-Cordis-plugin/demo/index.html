@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GrokBot 表情演示 · dsh-ui-grokbot</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; padding: 24px; background: #0f1117; color: #e8eaf0; font-family: system-ui, sans-serif; }
+    .row { display: flex; align-items: flex-start; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+    label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+    select { padding: 4px 8px; }
+    #grokbot-main { background: #1a1d27; border-radius: 16px; }
+    #grokbot-status { font-variant-numeric: tabular-nums; opacity: 0.8; font-size: 13px; margin: 8px 0; }
+    #grokbot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+    .thumb { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; background: #1a1d27; border-radius: 12px; font-size: 12px; color: #aab; }
+  </style>
+</head>
+<body>
+  <h1>GrokBot 表情演示</h1>
+  <div class="row">
+    <canvas id="grokbot-main" width="480" height="480"></canvas>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <label>形态 <select id="grokbot-shape"></select></label>
+      <label>主题 <select id="grokbot-theme"><option value="light">浅色（经典蓝）</option><option value="dark">深色</option><option value="mono">浅色（黑白）</option></select></label>
+      <label><input type="checkbox" id="grokbot-guides" /> 球面辅助线</label>
+      <p id="grokbot-status"></p>
+      <p style="font-size:13px;opacity:.7">循环 idle → thinking → working；回合结束自动庆祝；点击转一圈；鼠标移动视线跟随。</p>
+    </div>
+  </div>
+  <h2>25 种表情</h2>
+  <div id="grokbot-grid"></div>
+  <script src="./dist/demo.js"></script>
+</body>
+</html>
