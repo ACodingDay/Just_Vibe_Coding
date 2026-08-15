@@ -1,6 +1,7 @@
 mod config;
 mod ffi;
 mod packet;
+mod send;
 mod stats;
 pub mod effects;
 
@@ -8,16 +9,12 @@ pub use config::*;
 pub use packet::Packet;
 
 use std::collections::VecDeque;
-use std::ffi::c_void;
-use std::ptr::null_mut;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use rust_i18n::t;
-use windivert_sys::header::{WINDIVERT_ICMPHDR, WINDIVERT_ICMPV6HDR};
-use windivert_sys::WinDivertHelperParsePacket;
 use windows::Win32::Foundation::{ERROR_INVALID_HANDLE, ERROR_INVALID_PARAMETER, ERROR_OPERATION_ABORTED};
 
 use effects::{bandwidth, drop, duplicate, lag, ood, reset, tamper, throttle};
@@ -97,8 +94,11 @@ impl Engine {
             ffi::DivertHandle::open(filter, mode == EngineMode::Capture).map_err(|e| {
                 if e.raw_os_error() == Some(ERROR_INVALID_PARAMETER.0 as i32) {
                     t!("netclumsy.status.filter_syntax_error").to_string()
+                } else if e.kind() == std::io::ErrorKind::InvalidInput {
+                    t!("netclumsy.status.filter_invalid").to_string()
                 } else {
-                    format!("{} (code: {e})", t!("netclumsy.status.open_device_failed"))
+                    t!("netclumsy.status.open_device_failed.format", code = e.to_string())
+                        .to_string()
                 }
             })?,
         );
@@ -118,7 +118,7 @@ impl Engine {
             thread::Builder::new()
                 .name("netclumsy-recv".into())
                 .spawn(move || recv_loop(&handle, &state, &stop, &config, mode))
-                .map_err(|e| format!("{}: {e}", t!("netclumsy.status.thread_failed")))?
+                .map_err(|e| t!("netclumsy.status.thread_failed.format", error = e.to_string()))?
         };
         let clock_thread = {
             let handle = handle.clone();
@@ -128,7 +128,7 @@ impl Engine {
             thread::Builder::new()
                 .name("netclumsy-clock".into())
                 .spawn(move || clock_loop(&handle, &state, &stop, &config, mode))
-                .map_err(|e| format!("{}: {e}", t!("netclumsy.status.thread_failed")))?
+                .map_err(|e| t!("netclumsy.status.thread_failed.format", error = e.to_string()))?
         };
 
         Ok(Self {
@@ -222,7 +222,7 @@ fn clock_loop(
             // 收尾：关闭所有已启用效果 → 回注剩余包 → 关闭句柄中断 recv
             let mut guard = state.lock().unwrap();
             close_down_all(&mut guard, config);
-            send_all(handle, &mut guard.queue, config);
+            send::send_all(handle, &mut guard.queue, config);
             handle.close();
             return;
         }
@@ -366,7 +366,7 @@ fn consume_step(
         config.triggered_mask.fetch_or(triggered, Ordering::Relaxed);
     }
 
-    send_all(handle, &mut s.queue, config);
+    send::send_all(handle, &mut s.queue, config);
 }
 
 /// 停止时关闭所有已启用效果（C 原版 clock 线程退出路径）
@@ -385,75 +385,4 @@ fn close_down_all(s: &mut EngineState, config: &EngineConfig) {
     }
 }
 
-/// 回注队列所有剩余包（C 原版 sendAllListPackets）
-fn send_all(handle: &ffi::DivertHandle, queue: &mut VecDeque<Packet>, config: &EngineConfig) {
-    while let Some(p) = queue.pop_back() {
-        match handle.send(&p.data, &p.addr) {
-            Ok(len) => {
-                if len as usize >= p.data.len() {
-                    config.send_state.store(SEND_STATUS_SEND, Ordering::Relaxed);
-                } else {
-                    config.send_state.store(SEND_STATUS_FAIL, Ordering::Relaxed);
-                }
-            }
-            Err(_) => {
-                // C 原版：入站 ICMP 回注失败率高，改为出站方向重发（交换 src/dst）
-                match try_resend_inbound_icmp_as_outbound(p) {
-                    Some(resend) => match handle.send(&resend.data, &resend.addr) {
-                        Ok(_) => config.send_state.store(SEND_STATUS_SEND, Ordering::Relaxed),
-                        Err(_) => config.send_state.store(SEND_STATUS_FAIL, Ordering::Relaxed),
-                    },
-                    None => config.send_state.store(SEND_STATUS_FAIL, Ordering::Relaxed),
-                }
-            }
-        }
-    }
-}
 
-/// 入站 ICMP 回注失败时：置出站标志并交换 IP src/dst 后重发（C 原版 workaround）
-fn try_resend_inbound_icmp_as_outbound(mut p: Packet) -> Option<Packet> {
-    if p.is_outbound() {
-        return None;
-    }
-
-    let mut icmp: *mut WINDIVERT_ICMPHDR = null_mut();
-    let mut icmpv6: *mut WINDIVERT_ICMPV6HDR = null_mut();
-    let ok = unsafe {
-        WinDivertHelperParsePacket(
-            p.data.as_ptr().cast::<c_void>(),
-            p.data.len() as u32,
-            null_mut(),
-            null_mut(),
-            null_mut(),
-            &mut icmp,
-            &mut icmpv6,
-            null_mut(),
-            null_mut(),
-            null_mut(),
-            null_mut(),
-            null_mut(),
-            null_mut(),
-        )
-    };
-    if !ok.as_bool() || (icmp.is_null() && icmpv6.is_null()) {
-        return None;
-    }
-
-    let version = p.data.first().map_or(0, |b| b >> 4);
-    if version == 4 {
-        let ihl = ((p.data[0] & 0x0F) as usize) * 4;
-        if p.data.len() < ihl + 20 {
-            return None;
-        }
-        let (a, b) = p.data.split_at_mut(ihl + 16);
-        a[ihl + 12..ihl + 16].swap_with_slice(&mut b[0..4]);
-    } else if version == 6 && p.data.len() >= 40 {
-        let (a, b) = p.data.split_at_mut(24);
-        a[8..24].swap_with_slice(&mut b[0..16]);
-    } else {
-        return None;
-    }
-
-    p.addr.set_outbound(true);
-    Some(p)
-}

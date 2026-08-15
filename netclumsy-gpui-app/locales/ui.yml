@@ -26,12 +26,9 @@ netclumsy:
   window.filter.placeholder:
     zh-CN: 输入过滤表达式，如 tcp and tcp.DstPort == 8012
     en: e.g. tcp and tcp.DstPort == 8012
-  window.stats.rate:
-    zh-CN: 包速率
-    en: Packet Rate
-  window.stats.rate.unit:
-    zh-CN: 包/秒
-    en: pkt/s
+  window.stats.rate.format:
+    zh-CN: "包速率: {rate} 包/秒"
+    en: "Packet Rate: {rate} pkt/s"
   window.stats.matched:
     zh-CN: 匹配数
     en: Matched Count
@@ -119,18 +116,21 @@ netclumsy:
   status.stopped:
     zh-CN: 已停止。修改过滤条件后可重新开始。
     en: Stopped. Edit criteria and start again.
-  status.start_failed:
-    zh-CN: 启动失败
-    en: Failed to start
+  status.start_failed.format:
+    zh-CN: "启动失败: {error}"
+    en: "Failed to start: {error}"
   status.filter_syntax_error:
     zh-CN: 过滤器语法错误
     en: filter syntax error
-  status.open_device_failed:
-    zh-CN: 打开设备失败（请确认以管理员身份运行）
-    en: failed to open device (make sure running as Administrator)
-  status.thread_failed:
-    zh-CN: 创建线程失败
-    en: failed to create thread
-  status.matched:
-    zh-CN: 匹配包
-    en: matched packets
+  status.open_device_failed.format:
+    zh-CN: "打开设备失败（请确认以管理员身份运行）(code: {code})"
+    en: "failed to open device (make sure running as Administrator) (code: {code})"
+  status.filter_invalid:
+    zh-CN: 过滤器含非法字符
+    en: filter contains invalid characters
+  status.thread_failed.format:
+    zh-CN: "创建线程失败: {error}"
+    en: "Failed to create thread: {error}"
+  status.matched.format:
+    zh-CN: "匹配包: {count}"
+    en: "Matched: {count}"

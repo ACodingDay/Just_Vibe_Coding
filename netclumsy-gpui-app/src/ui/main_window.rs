@@ -260,7 +260,12 @@ impl MainWindow {
                 self.triggered_mask = 0;
             }
             Err(e) => {
-                self.status_text = format!("{}: {e}", t!("netclumsy.status.start_failed")).into();
+                self.status_text = t!(
+                    "netclumsy.status.start_failed.format",
+                    error = e.to_string()
+                )
+                .into_owned()
+                .into();
             }
         }
         cx.notify();
@@ -596,13 +601,14 @@ impl Render for MainWindow {
                     .gap_2()
                     .child(self.status_text.clone())
                     .child(div().flex_1())
-                    .child(format!(
-                        "{}: {} {}",
-                        t!("netclumsy.window.stats.rate"),
-                        self.packet_rate,
-                        t!("netclumsy.window.stats.rate.unit")
-                    ))
-                    .child(format!("{}: {}", t!("netclumsy.status.matched"), self.matched_count)),
+                    .child(
+                        t!("netclumsy.window.stats.rate.format", rate = self.packet_rate)
+                            .into_owned(),
+                    )
+                    .child(
+                        t!("netclumsy.status.matched.format", count = self.matched_count)
+                            .into_owned(),
+                    ),
             )
     }
 }

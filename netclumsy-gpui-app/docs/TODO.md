@@ -17,7 +17,8 @@
 | **P0 效果** | 8 个效果全部移植（lag/drop/throttle/duplicate/ood/tamper/reset/bandwidth），处理顺序与 C 原版一致 |
 | **P0 UI** | `src/ui/`：Filter 输入 + 4 个 8012 预设下拉 + Capture（SNIFF 嗅探）/Start/Stop + 发送状态灯 + 匹配包计数 + 8 组效果面板（开关 + Inbound/Outbound + 参数输入） |
 | **P0 指示灯** | 模块触发灯（位掩码 AtomicU32 + UI 200ms 轮询）+ 发送状态灯（AtomicU8 三态）已就绪 |
-| **P1 实时统计** | 包速率显示：CRateStats 移植抽取至 `src/engine/stats.rs`（bandwidth 复用同一实现）；recv 每包 update(1)、clock 40ms 发布 `rate_pps` 原子、UI 200ms 轮询显示「包速率: N 包/秒」（1000ms 滑动窗口，窗口未满显示 0，流量停止自然衰减）；顺带修复 matched_count 跨启动累积（Engine::new 清零） |
+| **P1 实时统计** | 包速率显示：CRateStats 移植抽取至 `src/engine/stats.rs`（bandwidth 复用同一实现）；recv 每包 update(1)、clock 40ms 发布 `rate_pps` 原子、UI 200ms 轮询显示（1000ms 滑动窗口，窗口未满显示 0，流量停止自然衰减）；顺带修复 matched_count 跨启动累积（Engine::new 清零） |
+| **P1 工程化收尾** | ① i18n 整句模板化：状态栏/错误提示的句子模板（含冒号、单位、code 位置）全部进 yml 用插值，代码零拼句；② 模块职责拆分：包回注（send_all + 入站 ICMP workaround）从 `engine/mod.rs` 拆出为 `engine/send.rs`；③ ffi 过滤器含 NUL 错误映射到 i18n key |
 
 ### P0 实现决策（与原计划差异）
 
@@ -104,7 +105,18 @@ src/engine/
 - [ ] **P2 打包发布**：release 构建 + WinDivert DLL/SYS 同目录分发
 - [ ] **P0 收尾**：实际运行验证（需管理员权限 + 真机流量测试：Drop/Lag 对 WebSocket 效果、Capture 计数增长）
 
-## 五、常用命令
+## 五、工程规范（后续开发一律遵守）
+
+1. **用户可见文案一律走 i18n**：禁止在代码里硬编码或拼接句子（包括冒号、单位、标点）；带变量的整句模板写进 `locales/ui.yml`，用 `t!(key, var = value)` 插值。数字/格式串（如输入回写）、元素 id、预设名（数据）不算文案。
+2. **模块按功能职责划分，高内聚低耦合**：
+   - `engine/mod.rs` = 引擎生命周期 + 双线程 + consume 管线（效果调度）
+   - `engine/send.rs` = 包回注（send_all + ICMP workaround）
+   - `engine/stats.rs` = CRateStats 速率统计（bandwidth 与全局包速率共用）
+   - `engine/effects/<effect>.rs` = 单个效果逻辑（state + startup/close_down/process）
+   - `engine/{config,ffi,packet}.rs` = 共享配置 / WinDivert FFI / 包数据类型
+   - `ui/` = 界面组件与窗口组装，不掺引擎逻辑；共享统计走 `EngineConfig` 原子 + UI 轮询
+
+## 六、常用命令
 
 ```powershell
 # 构建（每次需设置）
