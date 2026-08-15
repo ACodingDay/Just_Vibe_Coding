@@ -18,8 +18,9 @@ use crate::engine::{
     Engine, EngineConfig, EngineMode, SEND_STATUS_FAIL, SEND_STATUS_SEND, BIT_BANDWIDTH, BIT_DROP,
     BIT_DUPLICATE, BIT_LAG, BIT_OOD, BIT_RESET, BIT_TAMPER, BIT_THROTTLE,
 };
+use crate::args::ParsedArgs;
+use crate::presets::Preset;
 use crate::ui::effect_panel::{effect_row, status_dot_color};
-use crate::ui::presets::PRESETS;
 
 /// 指示灯轮询周期（与 C 原版 ICON_UPDATE_MS 一致）
 const POLL_INTERVAL_MS: u64 = 200;
@@ -27,6 +28,7 @@ const POLL_INTERVAL_MS: u64 = 200;
 pub struct MainWindow {
     config: Arc<EngineConfig>,
     engine: Option<Engine>,
+    presets: Vec<Preset>,
     filter_input: Entity<InputState>,
     preset_select: Entity<SelectState<SearchableVec<SharedString>>>,
     lag_time_input: Entity<InputState>,
@@ -48,15 +50,22 @@ pub struct MainWindow {
 }
 
 impl MainWindow {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>, config: Arc<EngineConfig>) -> Self {
+    pub fn new(
+        window: &mut Window,
+        cx: &mut Context<Self>,
+        config: Arc<EngineConfig>,
+        presets: Vec<Preset>,
+        parsed: ParsedArgs,
+    ) -> Self {
+        let default_filter = presets.first().map_or(String::new(), |p| p.filter.clone());
         let filter_input = cx.new(|cx| {
             InputState::new(window, cx)
                 .placeholder(t!("netclumsy.window.filter.placeholder"))
-                .default_value(PRESETS[0].1)
+                .default_value(default_filter)
         });
 
         let preset_items: Vec<SharedString> =
-            PRESETS.iter().map(|(name, _)| (*name).into()).collect();
+            presets.iter().map(|p| p.name.clone().into()).collect();
         let preset_select = cx.new(|cx| {
             SelectState::new(
                 SearchableVec::new(preset_items),
@@ -84,9 +93,10 @@ impl MainWindow {
             window,
             |this: &mut Self, _, event, window, cx| {
                 if let SelectEvent::Confirm(Some(value)) = event {
-                    if let Some((_, expr)) = PRESETS.iter().find(|(n, _)| *n == value.as_ref()) {
+                    if let Some(preset) = this.presets.iter().find(|p| p.name == value.as_ref()) {
+                        let expr = preset.filter.clone();
                         this.filter_input
-                            .update(cx, |s, cx| s.set_value(*expr, window, cx));
+                            .update(cx, |s, cx| s.set_value(expr, window, cx));
                     }
                 }
             },
@@ -224,9 +234,28 @@ impl MainWindow {
         })
         .detach();
 
-        Self {
+        // —— 应用命令行参数（原版 parseArgs + setFromParameter 行为）——
+        let inputs = EffectInputs {
+            lag_time: &lag_time_input,
+            drop_chance: &drop_chance_input,
+            throttle_chance: &throttle_chance_input,
+            throttle_frame: &throttle_frame_input,
+            duplicate_count: &duplicate_count_input,
+            duplicate_chance: &duplicate_chance_input,
+            ood_chance: &ood_chance_input,
+            tamper_chance: &tamper_chance_input,
+            reset_chance: &reset_chance_input,
+            bandwidth_limit: &bandwidth_limit_input,
+        };
+        if let Some(f) = &parsed.filter {
+            filter_input.update(cx, |s, cx| s.set_value(f.clone(), window, cx));
+        }
+        apply_cli_args(&config, &parsed, &inputs, window, cx);
+
+        let mut this = Self {
             config,
             engine: None,
+            presets,
             filter_input,
             preset_select,
             lag_time_input,
@@ -245,7 +274,34 @@ impl MainWindow {
             triggered_mask: 0,
             status_text: t!("netclumsy.status.idle").into_owned().into(),
             _subscriptions: subscriptions,
+        };
+
+        // --timeout：N 秒后自动退出（原版 uiTimeoutCb：秒 → 定时器 → 关闭程序）
+        if let Some(secs) = parsed.timeout_secs {
+            cx.spawn(move |_: WeakEntity<Self>, cx: &mut AsyncApp| {
+                let cx = cx.clone();
+                async move {
+                    let cx = cx;
+                    cx.background_executor()
+                        .timer(Duration::from_secs(secs))
+                        .await;
+                    let _ = cx.update(|cx| cx.quit());
+                }
+            })
+            .detach();
         }
+
+        // 带参数启动 → 自动开始过滤（原版 parameterized 行为）；--capture on → 嗅探模式
+        if parsed.has_any {
+            let mode = if parsed.capture == Some(true) {
+                EngineMode::Capture
+            } else {
+                EngineMode::Start
+            };
+            this.start_engine(mode, cx);
+        }
+
+        this
     }
 
     fn start_engine(&mut self, mode: EngineMode, cx: &mut Context<Self>) {
@@ -355,6 +411,156 @@ fn sync_chance(
         Err(_) => {
             target.store(0, Ordering::Relaxed);
         }
+    }
+}
+
+/// 命令行参数引用到的输入框集合
+struct EffectInputs<'a> {
+    lag_time: &'a Entity<InputState>,
+    drop_chance: &'a Entity<InputState>,
+    throttle_chance: &'a Entity<InputState>,
+    throttle_frame: &'a Entity<InputState>,
+    duplicate_count: &'a Entity<InputState>,
+    duplicate_chance: &'a Entity<InputState>,
+    ood_chance: &'a Entity<InputState>,
+    tamper_chance: &'a Entity<InputState>,
+    reset_chance: &'a Entity<InputState>,
+    bandwidth_limit: &'a Entity<InputState>,
+}
+
+/// 把命令行参数写进共享配置与输入框。
+///
+/// 复用 UI 输入订阅用的 sync_int/sync_chance 钳位+回写逻辑，保证 CLI 与
+/// 界面输入语义完全一致（原版 parseArgs 也是写 IUP 控件 VALUE，同一路径）。
+fn apply_cli_args(
+    config: &EngineConfig,
+    parsed: &ParsedArgs,
+    inputs: &EffectInputs<'_>,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    // lag
+    if let Some(b) = parsed.lag.enabled {
+        config.lag.base.enabled.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.lag.inbound {
+        config.lag.base.inbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.lag.outbound {
+        config.lag.base.outbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(v) = parsed.lag.values.get("time") {
+        sync_int(v, 0, 15000, &config.lag.time, inputs.lag_time, window, cx);
+    }
+
+    // drop
+    if let Some(b) = parsed.drop.enabled {
+        config.drop.base.enabled.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.drop.inbound {
+        config.drop.base.inbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.drop.outbound {
+        config.drop.base.outbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(v) = parsed.drop.values.get("chance") {
+        sync_chance(v, &config.drop.chance, inputs.drop_chance, window, cx);
+    }
+
+    // throttle
+    if let Some(b) = parsed.throttle.enabled {
+        config.throttle.base.enabled.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.throttle.inbound {
+        config.throttle.base.inbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.throttle.outbound {
+        config.throttle.base.outbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(v) = parsed.throttle.values.get("chance") {
+        sync_chance(v, &config.throttle.chance, inputs.throttle_chance, window, cx);
+    }
+    if let Some(v) = parsed.throttle.values.get("frame") {
+        sync_int(v, 0, 1000, &config.throttle.frame, inputs.throttle_frame, window, cx);
+    }
+
+    // duplicate
+    if let Some(b) = parsed.duplicate.enabled {
+        config.duplicate.base.enabled.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.duplicate.inbound {
+        config.duplicate.base.inbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.duplicate.outbound {
+        config.duplicate.base.outbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(v) = parsed.duplicate.values.get("chance") {
+        sync_chance(v, &config.duplicate.chance, inputs.duplicate_chance, window, cx);
+    }
+    if let Some(v) = parsed.duplicate.values.get("count") {
+        sync_int(v, 2, 50, &config.duplicate.count, inputs.duplicate_count, window, cx);
+    }
+
+    // ood
+    if let Some(b) = parsed.ood.enabled {
+        config.ood.base.enabled.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.ood.inbound {
+        config.ood.base.inbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.ood.outbound {
+        config.ood.base.outbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(v) = parsed.ood.values.get("chance") {
+        sync_chance(v, &config.ood.chance, inputs.ood_chance, window, cx);
+    }
+
+    // tamper
+    if let Some(b) = parsed.tamper.enabled {
+        config.tamper.base.enabled.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.tamper.inbound {
+        config.tamper.base.inbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.tamper.outbound {
+        config.tamper.base.outbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(v) = parsed.tamper.values.get("chance") {
+        sync_chance(v, &config.tamper.chance, inputs.tamper_chance, window, cx);
+    }
+    if let Some(v) = parsed.tamper.values.get("checksum") {
+        config
+            .tamper
+            .redo_checksum
+            .store(v.eq_ignore_ascii_case("on"), Ordering::Relaxed);
+    }
+
+    // reset
+    if let Some(b) = parsed.reset.enabled {
+        config.reset.base.enabled.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.reset.inbound {
+        config.reset.base.inbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.reset.outbound {
+        config.reset.base.outbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(v) = parsed.reset.values.get("chance") {
+        sync_chance(v, &config.reset.chance, inputs.reset_chance, window, cx);
+    }
+
+    // bandwidth
+    if let Some(b) = parsed.bandwidth.enabled {
+        config.bandwidth.base.enabled.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.bandwidth.inbound {
+        config.bandwidth.base.inbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(b) = parsed.bandwidth.outbound {
+        config.bandwidth.base.outbound.store(b, Ordering::Relaxed);
+    }
+    if let Some(v) = parsed.bandwidth.values.get("bandwidth") {
+        sync_int(v, 0, 99999, &config.bandwidth.limit, inputs.bandwidth_limit, window, cx);
     }
 }
 

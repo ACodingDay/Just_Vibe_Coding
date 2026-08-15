@@ -3533,6 +3533,7 @@ name = "netclumsy"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "encoding_rs",
  "gpui",
  "gpui-component",
  "rand 0.8.7",

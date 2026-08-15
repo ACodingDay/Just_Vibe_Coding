@@ -1,0 +1,18 @@
+# NetClumsy 过滤器预设（格式与原版 clumsy config.txt 完全一致：名称: 过滤表达式）
+# 注释以 # 开头；每个条目一行；预设只在启动时加载（修改后需重启）。
+# 注意：回环 (loopback) 包只能在 outbound 方向过滤（WinDivert 固有限制）。
+# 文件编码：UTF-8（无 BOM）或 GBK 均可识别。
+
+# WSL2 场景：浏览器 → 宿主机:8012（netsh portproxy）→ WSL2
+wsl2 ws 8012 both: tcp and (tcp.DstPort == 8012 or tcp.SrcPort == 8012)
+wsl2 ws 8012 uplink: tcp and tcp.DstPort == 8012
+wsl2 ws 8012 downlink: tcp and tcp.SrcPort == 8012
+wsl2 ws 8012 no-loopback: tcp and not loopback and (tcp.DstPort == 8012 or tcp.SrcPort == 8012)
+
+# 通用
+loopback packets: outbound and ip.DstAddr >= 127.0.0.1 and ip.DstAddr <= 127.255.255.255
+all sending packets: outbound
+all receiving packets: inbound
+
+# 可以在这里追加自己的常用过滤器，例如：
+#http requests only: outbound and tcp.DstPort == 80

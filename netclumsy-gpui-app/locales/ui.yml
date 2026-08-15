@@ -27,8 +27,8 @@ netclumsy:
     zh-CN: 输入过滤表达式，如 tcp and tcp.DstPort == 8012
     en: e.g. tcp and tcp.DstPort == 8012
   window.stats.rate.format:
-    zh-CN: "包速率: {rate} 包/秒"
-    en: "Packet Rate: {rate} pkt/s"
+    zh-CN: "包速率: %{rate} 包/秒"
+    en: "Packet Rate: %{rate} pkt/s"
   window.stats.matched:
     zh-CN: 匹配数
     en: Matched Count
@@ -117,20 +117,110 @@ netclumsy:
     zh-CN: 已停止。修改过滤条件后可重新开始。
     en: Stopped. Edit criteria and start again.
   status.start_failed.format:
-    zh-CN: "启动失败: {error}"
-    en: "Failed to start: {error}"
+    zh-CN: "启动失败: %{error}"
+    en: "Failed to start: %{error}"
   status.filter_syntax_error:
     zh-CN: 过滤器语法错误
     en: filter syntax error
   status.open_device_failed.format:
-    zh-CN: "打开设备失败（请确认以管理员身份运行）(code: {code})"
-    en: "failed to open device (make sure running as Administrator) (code: {code})"
+    zh-CN: "打开设备失败（请确认以管理员身份运行）(code: %{code})"
+    en: "failed to open device (make sure running as Administrator) (code: %{code})"
   status.filter_invalid:
     zh-CN: 过滤器含非法字符
     en: filter contains invalid characters
   status.thread_failed.format:
-    zh-CN: "创建线程失败: {error}"
-    en: "Failed to create thread: {error}"
+    zh-CN: "创建线程失败: %{error}"
+    en: "Failed to create thread: %{error}"
   status.matched.format:
-    zh-CN: "匹配包: {count}"
-    en: "Matched: {count}"
+    zh-CN: "匹配包: %{count}"
+    en: "Matched: %{count}"
+  cli.help:
+    zh-CN: |-
+      NetClumsy 网络包劣化工具（Rust + GPUI，基于 clumsy 功能重写）
+
+      用法: netclumsy.exe [--key value]...
+
+      带任意参数启动时自动开始过滤（与原版 clumsy 一致）。
+
+      通用参数:
+        --filter <表达式>             初始过滤表达式
+        --timeout <秒>               运行指定秒数后自动退出
+        --capture on|off             启动后进入捕获（嗅探）模式，默认 off
+        --help                       显示本帮助
+
+      效果开关（on|off）:
+        --lag --drop --throttle --duplicate --ood --tamper --reset --bandwidth
+
+      方向开关（on|off）:
+        --<效果>-inbound             入站
+        --<效果>-outbound            出站
+
+      效果参数:
+        --lag-time <毫秒>            延迟时长 (0-15000)
+        --drop-chance <百分比>       丢包概率 (0-100)
+        --throttle-chance <百分比>   节流触发概率 (0-100)
+        --throttle-frame <毫秒>      节流时间窗 (0-1000)
+        --duplicate-chance <百分比>  重复概率 (0-100)
+        --duplicate-count <份数>     重复份数 (2-50)
+        --ood-chance <百分比>        乱序概率 (0-100)
+        --tamper-chance <百分比>     篡改概率 (0-100)
+        --tamper-checksum on|off     篡改后重算校验和
+        --reset-chance <百分比>      断连概率 (0-100)
+        --bandwidth-bandwidth <KB/s> 限带宽上限 (0-99999)，别名 --bandwidth-limit
+
+      示例:
+        netclumsy.exe --filter "tcp and tcp.DstPort == 8012" --lag on --lag-time 200
+        netclumsy.exe --drop on --drop-chance 20 --timeout 60
+        netclumsy.exe --capture on --filter "udp"
+    en: |-
+      NetClumsy network packet degradation tool (Rust + GPUI, rewritten from clumsy)
+
+      Usage: netclumsy.exe [--key value]...
+
+      Starting with any argument starts filtering automatically (same as original clumsy).
+
+      General options:
+        --filter <expression>         initial filter expression
+        --timeout <seconds>           auto-exit after the given seconds
+        --capture on|off              start in capture (sniff) mode instead, default off
+        --help                        show this help
+
+      Effect switches (on|off):
+        --lag --drop --throttle --duplicate --ood --tamper --reset --bandwidth
+
+      Direction switches (on|off):
+        --<effect>-inbound            inbound
+        --<effect>-outbound           outbound
+
+      Effect parameters:
+        --lag-time <ms>               lag delay (0-15000)
+        --drop-chance <percent>       drop probability (0-100)
+        --throttle-chance <percent>   throttle trigger probability (0-100)
+        --throttle-frame <ms>         throttle timeframe (0-1000)
+        --duplicate-chance <percent>  duplicate probability (0-100)
+        --duplicate-count <count>     duplicate copies (2-50)
+        --ood-chance <percent>        out-of-order probability (0-100)
+        --tamper-chance <percent>     tamper probability (0-100)
+        --tamper-checksum on|off      redo checksum after tamper
+        --reset-chance <percent>      reset probability (0-100)
+        --bandwidth-bandwidth <KB/s>  bandwidth limit (0-99999), alias --bandwidth-limit
+
+      Examples:
+        netclumsy.exe --filter "tcp and tcp.DstPort == 8012" --lag on --lag-time 200
+        netclumsy.exe --drop on --drop-chance 20 --timeout 60
+        netclumsy.exe --capture on --filter "udp"
+  cli.error.hint:
+    zh-CN: 使用 --help 查看用法。
+    en: Run with --help for usage.
+  cli.error.unknown_option:
+    zh-CN: "未知参数: %{option}"
+    en: "unknown option: %{option}"
+  cli.error.missing_value:
+    zh-CN: "参数缺少值: %{option}"
+    en: "missing value for option: %{option}"
+  cli.error.invalid_bool:
+    zh-CN: "参数 %{option} 的值无效（应为 on/off）: %{value}"
+    en: "invalid value for %{option} (expected on/off): %{value}"
+  cli.error.invalid_number:
+    zh-CN: "参数 %{option} 的值应为数字: %{value}"
+    en: "expected a number for %{option}: %{value}"

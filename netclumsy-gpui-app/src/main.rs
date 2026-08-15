@@ -3,9 +3,11 @@ use gpui_component::Root;
 use rust_i18n::t;
 use std::sync::Arc;
 
+mod args;
 mod assets;
 mod elevate;
 mod engine;
+mod presets;
 mod ui;
 
 use assets::Assets;
@@ -15,10 +17,34 @@ use ui::main_window::MainWindow;
 rust_i18n::i18n!("locales", fallback = "en");
 
 fn main() {
+    // 控制台输出统一 UTF-8，避免中文 --help/错误在 GBK 控制台乱码
+    unsafe {
+        let _ = windows::Win32::System::Console::SetConsoleOutputCP(65001);
+    }
+    rust_i18n::set_locale("zh-CN");
+
+    // 解析命令行（原版 clumsy parseArgs 兼容 + 增强；提权前解析，
+    // 提权重启由 elevate_self 透传参数，修复原版丢参 bug）
+    let parsed = match args::parse(std::env::args_os().skip(1)) {
+        Ok(a) => a,
+        Err(msg) => {
+            eprintln!("{msg}");
+            eprintln!("{}", t!("netclumsy.cli.error.hint"));
+            std::process::exit(1);
+        }
+    };
+    if parsed.help {
+        print!("{}", args::help_text());
+        return;
+    }
+
     if !elevate::is_run_as_admin() {
         elevate::elevate_self();
         return;
     }
+
+    // 加载 exe 同目录 config.txt 预设（缺失时回退原版式 loopback 预设）
+    let presets = presets::load();
 
     let app = Application::new().with_assets(Assets);
 
@@ -43,7 +69,7 @@ fn main() {
                     ..Default::default()
                 },
                 move |window, cx| {
-                    let view = cx.new(|cx| MainWindow::new(window, cx, config));
+                    let view = cx.new(|cx| MainWindow::new(window, cx, config, presets, parsed));
                     cx.new(|cx| Root::new(view, window, cx))
                 },
             )?;

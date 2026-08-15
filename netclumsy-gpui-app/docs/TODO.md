@@ -19,6 +19,9 @@
 | **P0 指示灯** | 模块触发灯（位掩码 AtomicU32 + UI 200ms 轮询）+ 发送状态灯（AtomicU8 三态）已就绪 |
 | **P1 实时统计** | 包速率显示：CRateStats 移植抽取至 `src/engine/stats.rs`（bandwidth 复用同一实现）；recv 每包 update(1)、clock 40ms 发布 `rate_pps` 原子、UI 200ms 轮询显示（1000ms 滑动窗口，窗口未满显示 0，流量停止自然衰减）；顺带修复 matched_count 跨启动累积（Engine::new 清零） |
 | **P1 工程化收尾** | ① i18n 整句模板化：状态栏/错误提示的句子模板（含冒号、单位、code 位置）全部进 yml 用插值，代码零拼句；② 模块职责拆分：包回注（send_all + 入站 ICMP workaround）从 `engine/mod.rs` 拆出为 `engine/send.rs`；③ ffi 过滤器含 NUL 错误映射到 i18n key |
+| **P2 config.txt 兼容** | `src/presets.rs`：exe 同目录 config.txt（原版格式），规则与原版一致（# 注释/首个冒号分割/无冒号行终止解析/启动时加载一次）+ 安全化（64 条封顶、无 4096 截断、剥 BOM、UTF-8 失败按 GBK 兜底、trim、空条目跳过）；缺失/为空回退原版式 1 条 loopback 预设；单测 9 例 |
+| **P2 参数化启动** | `src/args.rs`：原版 key 全集 + `--help` + `--capture on|off` + `--bandwidth-limit` 别名；`elevate.rs` 提权重启透传命令行参数（修复原版丢参 bug）；`--timeout N` 秒自动退出；带参自动 Start（parameterized 原版行为）；错误提示 i18n；单测 8 例 |
+| **P2 打包发布** | `script/package.ps1` 一键组装 dist（exe + WinDivert.dll/sys + config.txt + 许可证文本）+ zip；`etc/config.txt` 示例（含 WSL2 预设）；[profile.release] strip + thin LTO；exe 图标/版本资源暂缓 |
 
 ### P0 实现决策（与原计划差异）
 
@@ -31,6 +34,13 @@
 7. **tamper/reset 用 `WinDivertHelperParsePacket` FFI**（与 C 一致处理 IPv4/IPv6/扩展头）；校验和重算用 `WinDivertHelperCalcChecksums(addr=NULL, flags=0)`。
 8. **入站 ICMP 回注失败 workaround 已移植**：置 Outbound + 交换 IP src/dst 后重发。
 9. **参数输入语义对齐 C 原版**：空/非法输入按 0 处理（钳到下限）且不回写文本；越界输入钳位后回写文本。
+
+### P2 实现决策（与原版差异，已与用户确认）
+
+1. **config.txt**：解析规则与原版一致；改进：无截断、64 条封顶（原版越界 bug）、剥 UTF-8 BOM、UTF-8 失败按 GBK 兜底（encoding_rs，依赖树已有）、名称/值 trim、空条目跳过；缺失/为空回退**原版式 1 条 loopback 预设**（用户确认），WSL2 4 预设移入随包 `etc/config.txt`。
+2. **CLI**：兼容原版全部 key（含 `--bandwidth-bandwidth`，另加别名 `--bandwidth-limit`）；新增 `--help`（i18n）、`--capture on|off`；非法参数 i18n 报错 + 提示（原版 exit(-1) 静默）；布尔 on/off 大小写不敏感；带参自动 Start 与 `--timeout N` 秒退出保留原版行为。
+3. **提权透传参数（修复原版 bug）**：原版 ShellExecuteEx 不带 lpParameters，提权重启后 CLI 参数静默丢失；我们取 GetCommandLineW 尾部（保留引号语义）原样传给 ShellExecuteW。
+4. **打包**：`script/package.ps1` 组装 exe + WinDivert.dll/sys + config.txt + LICENSE（LGPLv3）+ THIRD-PARTY-NOTICES（clumsy MIT）；release 开 strip + thin LTO；exe 图标/版本资源留待后续。
 
 ## 二、clumsy 源码架构分析（参考 `C:\Users\yyt0111\Downloads\clumsy-master\src`）
 
@@ -100,9 +110,9 @@ src/engine/
 - [x] **P0 效果面板**：8 组「开关 + 方向 Inbound/Outbound + 参数输入」行，布局参考原版
 - [x] **P1 实时统计**：包速率显示（滑动窗口；匹配数 P0 已有）——见「一、已完成」P1 行
 - [x] **P1 指示灯**：模块触发/发送状态（P0 已顺带实现）
-- [ ] **P2 config.txt 兼容**：exe 同目录加载预设（沿用原版格式 `name: value`，替代硬编码 4 预设）
-- [ ] **P2 参数化启动**：`--lag on --lag-time 50` 等（原版 parseArgs 行为）
-- [ ] **P2 打包发布**：release 构建 + WinDivert DLL/SYS 同目录分发
+- [x] **P2 config.txt 兼容**：exe 同目录加载预设（沿用原版格式 `name: value`）——见「一、已完成」P2 行
+- [x] **P2 参数化启动**：`--lag on --lag-time 50` 等（原版 parseArgs 行为 + 增强）——见「一、已完成」P2 行
+- [x] **P2 打包发布**：release 构建 + WinDivert DLL/SYS 同目录分发（`script/package.ps1`）——见「一、已完成」P2 行
 - [ ] **P0 收尾**：实际运行验证（需管理员权限 + 真机流量测试：Drop/Lag 对 WebSocket 效果、Capture 计数增长）
 
 ## 五、工程规范（后续开发一律遵守）
