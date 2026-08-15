@@ -29,6 +29,9 @@ netclumsy:
   window.stats.rate:
     zh-CN: 包速率
     en: Packet Rate
+  window.stats.rate.unit:
+    zh-CN: 包/秒
+    en: pkt/s
   window.stats.matched:
     zh-CN: 匹配数
     en: Matched Count

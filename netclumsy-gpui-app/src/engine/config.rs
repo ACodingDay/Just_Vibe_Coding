@@ -169,6 +169,8 @@ pub struct EngineConfig {
     pub triggered_mask: Arc<AtomicU32>,
     /// 匹配包总数（capture / start 均计数）
     pub matched_count: Arc<AtomicU64>,
+    /// 匹配包速率（包/秒，1000ms 滑动窗口；窗口未满为 0），引擎写、UI 轮询读
+    pub rate_pps: Arc<AtomicU32>,
 }
 
 impl Default for EngineConfig {
@@ -185,6 +187,7 @@ impl Default for EngineConfig {
             send_state: Arc::new(AtomicU8::new(SEND_STATUS_NONE)),
             triggered_mask: Arc::new(AtomicU32::new(0)),
             matched_count: Arc::new(AtomicU64::new(0)),
+            rate_pps: Arc::new(AtomicU32::new(0)),
         }
     }
 }

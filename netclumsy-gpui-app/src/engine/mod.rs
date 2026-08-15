@@ -1,6 +1,7 @@
 mod config;
 mod ffi;
 mod packet;
+mod stats;
 pub mod effects;
 
 pub use config::*;
@@ -56,6 +57,8 @@ pub struct Engine {
 
 struct EngineState {
     queue: VecDeque<Packet>,
+    /// 匹配包速率统计（1000ms 滑动窗口，包/秒）
+    rate: stats::RateStats,
     lag: lag::State,
     drop: drop::State,
     throttle: throttle::State,
@@ -70,6 +73,7 @@ impl Default for EngineState {
     fn default() -> Self {
         Self {
             queue: VecDeque::new(),
+            rate: stats::RateStats::default(),
             lag: lag::State::default(),
             drop: drop::State::default(),
             throttle: throttle::State::default(),
@@ -98,6 +102,10 @@ impl Engine {
                 }
             })?,
         );
+
+        // 统计随引擎生命周期重置（matched_count 跨启动清零，避免 UI 从 0 跳回旧累计值）
+        config.matched_count.store(0, Ordering::Relaxed);
+        config.rate_pps.store(0, Ordering::Relaxed);
 
         let state = Arc::new(Mutex::new(EngineState::default()));
         let stop = Arc::new(AtomicBool::new(false));
@@ -192,9 +200,11 @@ fn recv_loop(
             // C 原版："Lost last recved packet but user stopped."
             break;
         }
+        let now = now_ms();
         guard
             .queue
             .push_back(Packet::new(buf[..len].to_vec(), addr));
+        guard.rate.update(1, now);
         consume_step(handle, &mut guard, config, mode);
     }
 }
@@ -220,6 +230,10 @@ fn clock_loop(
         // try_lock 对应 C 的 WaitForSingleObject(mutex, 40ms)：锁忙则跳过本轮
         if let Ok(mut guard) = state.try_lock() {
             consume_step(handle, &mut guard, config, mode);
+            // 发布当前包速率（窗口未满为 -1 → 显示 0）；流量停止时窗口滑空自然衰减为 0
+            let now = now_ms();
+            let pps = guard.rate.calculate(now).max(0) as u32;
+            config.rate_pps.store(pps, Ordering::Relaxed);
         }
         thread::sleep(Duration::from_millis(CLOCK_WAIT_MS));
     }

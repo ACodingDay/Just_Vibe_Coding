@@ -40,6 +40,7 @@ pub struct MainWindow {
     reset_chance_input: Entity<InputState>,
     bandwidth_limit_input: Entity<InputState>,
     matched_count: u64,
+    packet_rate: u32,
     send_state: u8,
     triggered_mask: u32,
     status_text: SharedString,
@@ -239,6 +240,7 @@ impl MainWindow {
             reset_chance_input,
             bandwidth_limit_input,
             matched_count: 0,
+            packet_rate: 0,
             send_state: 0,
             triggered_mask: 0,
             status_text: t!("netclumsy.status.idle").into_owned().into(),
@@ -253,6 +255,7 @@ impl MainWindow {
                 self.engine = Some(engine);
                 self.status_text = t!("netclumsy.status.started").into_owned().into();
                 self.matched_count = 0;
+                self.packet_rate = 0;
                 self.send_state = 0;
                 self.triggered_mask = 0;
             }
@@ -268,6 +271,7 @@ impl MainWindow {
             engine.stop();
         }
         self.status_text = t!("netclumsy.status.stopped").into_owned().into();
+        self.packet_rate = 0;
         self.send_state = 0;
         self.triggered_mask = 0;
         cx.notify();
@@ -275,6 +279,7 @@ impl MainWindow {
 
     fn poll_status(&mut self, cx: &mut Context<Self>) {
         self.matched_count = self.config.matched_count.load(Ordering::Relaxed);
+        self.packet_rate = self.config.rate_pps.load(Ordering::Relaxed);
         self.send_state = self.config.send_state.swap(0, Ordering::SeqCst);
         self.triggered_mask = self.config.triggered_mask.swap(0, Ordering::SeqCst);
         cx.notify();
@@ -591,6 +596,12 @@ impl Render for MainWindow {
                     .gap_2()
                     .child(self.status_text.clone())
                     .child(div().flex_1())
+                    .child(format!(
+                        "{}: {} {}",
+                        t!("netclumsy.window.stats.rate"),
+                        self.packet_rate,
+                        t!("netclumsy.window.stats.rate.unit")
+                    ))
                     .child(format!("{}: {}", t!("netclumsy.status.matched"), self.matched_count)),
             )
     }

@@ -17,6 +17,7 @@
 | **P0 效果** | 8 个效果全部移植（lag/drop/throttle/duplicate/ood/tamper/reset/bandwidth），处理顺序与 C 原版一致 |
 | **P0 UI** | `src/ui/`：Filter 输入 + 4 个 8012 预设下拉 + Capture（SNIFF 嗅探）/Start/Stop + 发送状态灯 + 匹配包计数 + 8 组效果面板（开关 + Inbound/Outbound + 参数输入） |
 | **P0 指示灯** | 模块触发灯（位掩码 AtomicU32 + UI 200ms 轮询）+ 发送状态灯（AtomicU8 三态）已就绪 |
+| **P1 实时统计** | 包速率显示：CRateStats 移植抽取至 `src/engine/stats.rs`（bandwidth 复用同一实现）；recv 每包 update(1)、clock 40ms 发布 `rate_pps` 原子、UI 200ms 轮询显示「包速率: N 包/秒」（1000ms 滑动窗口，窗口未满显示 0，流量停止自然衰减）；顺带修复 matched_count 跨启动累积（Engine::new 清零） |
 
 ### P0 实现决策（与原计划差异）
 
@@ -96,7 +97,7 @@ src/engine/
 - [x] **P0 效果模块**：按顺序逐个移植 8 个效果（drop → lag → throttle → duplicate → ood → tamper → reset → bandwidth），每个配 i18n 文案
 - [x] **P0 UI 主窗口**：Filter 输入 + 预设下拉（config.txt 4 个 8012 预设迁移）+ Capture/Start 按钮 + 状态灯
 - [x] **P0 效果面板**：8 组「开关 + 方向 Inbound/Outbound + 参数输入」行，布局参考原版
-- [ ] **P1 实时统计**：包速率显示（滑动窗口；匹配数 P0 已有）
+- [x] **P1 实时统计**：包速率显示（滑动窗口；匹配数 P0 已有）——见「一、已完成」P1 行
 - [x] **P1 指示灯**：模块触发/发送状态（P0 已顺带实现）
 - [ ] **P2 config.txt 兼容**：exe 同目录加载预设（沿用原版格式 `name: value`，替代硬编码 4 预设）
 - [ ] **P2 参数化启动**：`--lag on --lag-time 50` 等（原版 parseArgs 行为）
