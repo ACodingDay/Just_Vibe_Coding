@@ -1,5 +1,5 @@
 use gpui::*;
-use gpui_component::Root;
+use gpui_component::{Root, TitleBar};
 use rust_i18n::t;
 use std::sync::Arc;
 
@@ -46,12 +46,14 @@ fn main() {
     // 加载 exe 同目录 config.txt 预设（缺失时回退原版式 loopback 预设）
     let presets = presets::load();
 
-    let app = Application::new().with_assets(Assets);
+    let app = gpui_platform::application().with_assets(Assets);
 
     app.run(move |cx| {
         gpui_component::set_locale("zh-CN");
         rust_i18n::set_locale("zh-CN");
         gpui_component::init(cx);
+        // 注册深/浅两套 seed token 主题，默认深色（design/DESIGN.md §4）
+        ui::theme::init(cx);
 
         let config = Arc::new(EngineConfig::default());
 
@@ -60,12 +62,15 @@ fn main() {
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(Bounds {
                         origin: point(px(100.), px(100.)),
-                        size: size(px(640.), px(620.)),
+                        size: size(px(920.), px(720.)),
                     })),
+                    // 自适应布局的最小尺寸限制（再小效果行参数区无法容纳）
+                    window_min_size: Some(size(px(800.), px(600.))),
                     titlebar: Some(TitlebarOptions {
                         title: Some(t!("netclumsy.app.title").into_owned().into()),
-                        ..Default::default()
+                        ..TitleBar::title_bar_options()
                     }),
+                    app_owns_titlebar_drag: true,
                     ..Default::default()
                 },
                 move |window, cx| {

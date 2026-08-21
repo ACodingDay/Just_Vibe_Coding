@@ -97,7 +97,8 @@ impl Engine {
                 } else if e.kind() == std::io::ErrorKind::InvalidInput {
                     t!("netclumsy.status.filter_invalid").to_string()
                 } else {
-                    t!("netclumsy.status.open_device_failed.format", code = e.to_string())
+                    let code = e.raw_os_error().unwrap_or(-1);
+                    t!("netclumsy.status.open_device_failed.format", code = code)
                         .to_string()
                 }
             })?,

@@ -8,6 +8,21 @@ netclumsy:
   app.tagline:
     zh-CN: 网络包劣化工具
     en: Network Packet Degradation Tool
+  tab.degrade:
+    zh-CN: 劣化
+    en: Degrade
+  tab.about:
+    zh-CN: 关于
+    en: About
+  tab.chain_hint:
+    zh-CN: "Lag → Drop → Throttle → Duplicate → OOD → Tamper → Reset → Bandwidth"
+    en: "Lag → Drop → Throttle → Duplicate → OOD → Tamper → Reset → Bandwidth"
+  about.app_name:
+    zh-CN: NetClumsy
+    en: NetClumsy
+  about.description:
+    zh-CN: 网络包劣化工具 · 基于 clumsy 重写
+    en: Network packet degradation tool · rewritten from clumsy
   window.capture:
     zh-CN: 捕获
     en: Capture
@@ -26,6 +41,39 @@ netclumsy:
   window.filter.placeholder:
     zh-CN: 输入过滤表达式，如 tcp and tcp.DstPort == 8012
     en: e.g. tcp and tcp.DstPort == 8012
+  window.send.label:
+    zh-CN: 发送
+    en: Send
+  window.control.note:
+    zh-CN: 停止后可修改过滤条件并重新开始
+    en: Edit filter after stopping to restart
+  window.admin.badge:
+    zh-CN: 管理员权限
+    en: Admin Privileges
+  window.admin.not_admin:
+    zh-CN: 非管理员权限
+    en: Not Admin
+  window.admin.failed:
+    zh-CN: 引擎启动失败
+    en: Engine Failed
+  window.filter.locked:
+    zh-CN: 引擎运行中
+    en: Engine Running
+  window.theme.toggle:
+    zh-CN: 切换深浅主题
+    en: Toggle dark/light theme
+  stats.window_hint:
+    zh-CN: 近 30 秒
+    en: Last 30s
+  stats.rate.label:
+    zh-CN: 包速率
+    en: Packet Rate
+  stats.rate.unit:
+    zh-CN: 包/秒
+    en: pkt/s
+  stats.matched.label:
+    zh-CN: 匹配包
+    en: Matched
   window.stats.rate.format:
     zh-CN: "包速率: %{rate} 包/秒"
     en: "Packet Rate: %{rate} pkt/s"
@@ -39,20 +87,29 @@ netclumsy:
     zh-CN: 出站
     en: Outbound
   effect.lag:
-    zh-CN: 延迟 (Lag)
+    zh-CN: 延迟
     en: Lag
+  effect.lag.en:
+    zh-CN: Lag
+    en: ""
   effect.lag.delay:
     zh-CN: 延迟 (ms)
     en: Delay (ms)
   effect.drop:
-    zh-CN: 丢包 (Drop)
+    zh-CN: 丢包
     en: Drop
+  effect.drop.en:
+    zh-CN: Drop
+    en: ""
   effect.drop.chance:
     zh-CN: 概率 (%)
     en: Chance (%)
   effect.throttle:
-    zh-CN: 节流 (Throttle)
+    zh-CN: 节流
     en: Throttle
+  effect.throttle.en:
+    zh-CN: Throttle
+    en: ""
   effect.throttle.chance:
     zh-CN: 触发概率 (%)
     en: Trigger Chance (%)
@@ -63,14 +120,20 @@ netclumsy:
     zh-CN: 丢弃节流包
     en: Drop Throttled
   effect.bandwidth:
-    zh-CN: 限带宽 (Bandwidth)
+    zh-CN: 限带宽
     en: Bandwidth
+  effect.bandwidth.en:
+    zh-CN: Bandwidth
+    en: ""
   effect.bandwidth.limit:
     zh-CN: 上限 (KB/s)
     en: Limit (KB/s)
   effect.duplicate:
-    zh-CN: 重复 (Duplicate)
+    zh-CN: 重复
     en: Duplicate
+  effect.duplicate.en:
+    zh-CN: Duplicate
+    en: ""
   effect.duplicate.count:
     zh-CN: 份数
     en: Count
@@ -78,14 +141,20 @@ netclumsy:
     zh-CN: 概率 (%)
     en: Chance (%)
   effect.ood:
-    zh-CN: 乱序 (Out of order)
+    zh-CN: 乱序
     en: Out of order
+  effect.ood.en:
+    zh-CN: Out of order
+    en: ""
   effect.ood.chance:
     zh-CN: 概率 (%)
     en: Chance (%)
   effect.tamper:
-    zh-CN: 篡改 (Tamper)
+    zh-CN: 篡改
     en: Tamper
+  effect.tamper.en:
+    zh-CN: Tamper
+    en: ""
   effect.tamper.chance:
     zh-CN: 概率 (%)
     en: Chance (%)
@@ -93,8 +162,11 @@ netclumsy:
     zh-CN: 重算校验和
     en: Redo Checksum
   effect.reset:
-    zh-CN: 断连 (Set TCP RST)
+    zh-CN: 断连
     en: Set TCP RST
+  effect.reset.en:
+    zh-CN: Set TCP RST
+    en: ""
   effect.reset.chance:
     zh-CN: 概率 (%)
     en: Chance (%)

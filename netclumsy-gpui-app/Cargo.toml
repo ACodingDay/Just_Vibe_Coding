@@ -6,13 +6,25 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.104"
 encoding_rs = "0.8"
-gpui = "0.2.2"
-gpui-component = "0.5.1"
+gpui = { path = "C:/Users/yyt0111/Downloads/zed-main/crates/gpui" }
+gpui_platform = { path = "C:/Users/yyt0111/Downloads/zed-main/crates/gpui_platform" }
+gpui-component = { path = "C:/Users/yyt0111/Downloads/gpui-component-main/crates/ui" }
 rand = "0.8"
 rust-embed = "8.12.0"
+serde_json = "1"
 rust-i18n = "4.2"
 windivert-sys = "0.10.0"
 windows = { version = "0.48", features = ["Win32_UI_Shell", "Win32_Security", "Win32_Foundation", "Win32_System_Threading", "Win32_System_Console", "Win32_UI_WindowsAndMessaging", "Win32_System_SystemServices", "Win32_System_Environment"] }
+
+# 将 gpui-component workspace 中的 git 依赖重定向到本地 zed-main 副本
+[patch."https://github.com/zed-industries/zed"]
+gpui = { path = "C:/Users/yyt0111/Downloads/zed-main/crates/gpui" }
+gpui_platform = { path = "C:/Users/yyt0111/Downloads/zed-main/crates/gpui_platform" }
+gpui_web = { path = "C:/Users/yyt0111/Downloads/zed-main/crates/gpui_web" }
+gpui_macros = { path = "C:/Users/yyt0111/Downloads/zed-main/crates/gpui_macros" }
+
+[patch."https://github.com/zed-industries/font-kit"]
+zed-font-kit = { path = "C:/Users/yyt0111/Downloads/font-kit-master" }
 
 [profile.release]
 lto = "thin"
