@@ -98,12 +98,18 @@ pub fn render(view: &MainWindow, cx: &mut Context<MainWindow>) -> AnyElement {
                 .gap_2()
                 .child(bar_label(t!("netclumsy.window.filter.label").into_owned(), cx))
                 .child(
-                    Input::new(&view.filter_input).readonly(true).suffix(
-                        Clipboard::new("filter-clipboard").value_fn({
-                            let state = view.filter_input.clone();
-                            move |_, cx| state.read(cx).value()
-                        }),
-                    ),
+                    // 修复：原先恒为 readonly(true)，过滤框只能从预设下拉里选，
+                    // 自定义过滤表达式根本输不进去（start_engine 取的正是这个值）。
+                    // 只在引擎运行中锁定，与下方的「引擎运行中」提示和预设 Select
+                    // 的 disabled(running) 保持同一套语义。
+                    Input::new(&view.filter_input)
+                        .readonly(running)
+                        .suffix(
+                            Clipboard::new("filter-clipboard").value_fn({
+                                let state = view.filter_input.clone();
+                                move |_, cx| state.read(cx).value()
+                            }),
+                        ),
                 )
                 .when(running, |this| {
                     this.child(

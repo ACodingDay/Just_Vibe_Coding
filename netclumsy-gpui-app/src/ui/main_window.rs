@@ -263,6 +263,9 @@ impl MainWindow {
         if let Some(mut engine) = self.engine.take() {
             engine.stop();
         }
+        // 修复：clock 线程收尾时也会归零 rate_pps，但如果它在到达收尾代码前就异常退出，
+        // 原子里留着最后一个非 0 速率，下一次轮询会把它读回界面（速率条永久卡住）。
+        self.config.rate_pps.store(0, Ordering::Relaxed);
         self.engine_failed = false;
         self.status_text = t!("netclumsy.status.stopped").into_owned().into();
         self.packet_rate = 0;
@@ -272,12 +275,47 @@ impl MainWindow {
     }
 
     fn poll_status(&mut self, cx: &mut Context<Self>) {
-        self.matched_count = self.config.matched_count.load(Ordering::Relaxed);
-        self.packet_rate = self.config.rate_pps.load(Ordering::Relaxed);
-        self.send_state = self.config.send_state.swap(0, Ordering::SeqCst);
-        self.triggered_mask = self.config.triggered_mask.swap(0, Ordering::SeqCst);
-        self.rate_history.push(self.packet_rate);
-        cx.notify();
+        // 修复：引擎线程自行退出（recv 连续错误放弃后自动收尾）时，原先只闪一次红色
+        // 发送灯，界面仍停留在「运行中」。检测到 clock 线程收尾完成就接管：join 已退出
+        // 的线程、清零读数，状态行升级为与 start_failed 同级的错误提示。
+        // 用户主动停止时引擎已被 take 走，这里天然跳过。
+        if self.engine.is_some() && self.config.engine_exited.load(Ordering::Relaxed) {
+            if let Some(mut engine) = self.engine.take() {
+                engine.stop();
+            }
+            self.config.rate_pps.store(0, Ordering::Relaxed);
+            self.engine_failed = true;
+            self.status_text = t!("netclumsy.status.engine_exited").into_owned().into();
+            self.packet_rate = 0;
+            self.send_state = 0;
+            self.triggered_mask = 0;
+            cx.notify();
+            return;
+        }
+        let matched_count = self.config.matched_count.load(Ordering::Relaxed);
+        let packet_rate = self.config.rate_pps.load(Ordering::Relaxed);
+        let send_state = self.config.send_state.swap(0, Ordering::SeqCst);
+        let triggered_mask = self.config.triggered_mask.swap(0, Ordering::SeqCst);
+        self.rate_history.push(packet_rate);
+
+        // 修复：原先无条件 cx.notify()，引擎未启动时四个读数恒定不变，仍以 5Hz
+        // 重绘整棵 UI 树（空闲也白耗 CPU/GPU）。仅在读数确实变化时通知重绘。
+        // 注意还要带上「曲线仍在滚出旧数据」这一条件：速率归零后，30 秒 AreaChart
+        // 只有靠重绘才会把最后的非零柱向左滚出窗口，否则图形会冻结在半空。
+        let changed = matched_count != self.matched_count
+            || packet_rate != self.packet_rate
+            || send_state != self.send_state
+            || triggered_mask != self.triggered_mask
+            || !self.rate_history.is_flat_zero();
+
+        self.matched_count = matched_count;
+        self.packet_rate = packet_rate;
+        self.send_state = send_state;
+        self.triggered_mask = triggered_mask;
+
+        if changed {
+            cx.notify();
+        }
     }
 
     /// 劣化页：FilterBar + 效果列表（高度不足时内部滚动）

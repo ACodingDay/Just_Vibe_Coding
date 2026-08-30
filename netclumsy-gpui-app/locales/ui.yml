@@ -188,6 +188,9 @@ netclumsy:
   status.stopped:
     zh-CN: 已停止。修改过滤条件后可重新开始。
     en: Stopped. Edit criteria and start again.
+  status.engine_exited:
+    zh-CN: 引擎已异常停止：收包连续出错，已自动收尾并回注缓冲的数据包。
+    en: "Engine stopped unexpectedly: packet reception failed repeatedly; shutdown ran and buffered packets were flushed back."
   status.start_failed.format:
     zh-CN: "启动失败: %{error}"
     en: "Failed to start: %{error}"
@@ -296,3 +299,6 @@ netclumsy:
   cli.error.invalid_number:
     zh-CN: "参数 %{option} 的值应为数字: %{value}"
     en: "expected a number for %{option}: %{value}"
+  cli.error.elevate_failed:
+    zh-CN: "提权失败：需要管理员权限才能加载 WinDivert 驱动（UAC 被取消或 ShellExecute 失败）。"
+    en: "elevation failed: Administrator rights are required to load the WinDivert driver (UAC cancelled or ShellExecute failed)."

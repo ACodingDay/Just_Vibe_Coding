@@ -22,6 +22,11 @@ impl State {
         self.give_up_cnt = KEEP_TURNS_MAX;
     }
 
+    /// 关闭时把暂存包放回队首。
+    ///
+    /// 队列方向约定（见 `engine/mod.rs` 顶部）：队首 = 最先回注，所以
+    /// `push_front` 才等价于 C 原版的"放回主链表头部"。send_all 此前用
+    /// pop_back 时，这个"放回头部"实际落到了最后发出，ood 等于没生效。
     pub fn close_down(&mut self, queue: &mut VecDeque<Packet>) {
         if let Some(p) = self.held.take() {
             queue.push_front(p);

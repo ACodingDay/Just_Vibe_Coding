@@ -39,8 +39,19 @@ fn main() {
     }
 
     if !elevate::is_run_as_admin() {
-        elevate::elevate_self();
-        return;
+        // 修复：原实现忽略 elevate_self() 的返回值、无条件 return。用户取消 UAC 或
+        // ShellExecuteW 失败时，进程静默以 0 退出：既没有任何提示，脚本调用方也
+        // 误以为执行成功。现在只有确实拉起了提权新进程才退出当前进程。
+        if elevate::elevate_self() {
+            return;
+        }
+        eprintln!("{}", t!("netclumsy.cli.error.elevate_failed"));
+        // 交互式启动继续进 GUI：界面有「未以管理员身份运行」红色徽标，start_engine
+        // 也会给出「打开设备失败（请确认以管理员身份运行）」，比关闭控制台窗口更可读。
+        // 带参数的自动化启动没有后续界面可看，明确以非 0 码失败退出。
+        if parsed.has_any {
+            std::process::exit(1);
+        }
     }
 
     // 加载 exe 同目录 config.txt 预设（缺失时回退原版式 loopback 预设）

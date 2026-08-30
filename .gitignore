@@ -4,4 +4,7 @@
 # WorkBuddy 工作目录（缓存/记忆，不需要提交）
 .workbuddy/
 
+# Command Code 会话目录（工具自动生成，不提交）
+.commandcode/
+
 # This repo only contains cleanmywin-tauri-app

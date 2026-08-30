@@ -171,6 +171,9 @@ pub struct EngineConfig {
     pub matched_count: Arc<AtomicU64>,
     /// 匹配包速率（包/秒，1000ms 滑动窗口；窗口未满为 0），引擎写、UI 轮询读
     pub rate_pps: Arc<AtomicU32>,
+    /// 引擎线程已自行退出（如收包连续错误放弃后自动收尾）。clock 线程停止收尾时置位，
+    /// UI 轮询消费；用户主动停止时引擎已被 take 走，该位在下次启动时重置
+    pub engine_exited: Arc<AtomicBool>,
 }
 
 impl Default for EngineConfig {
@@ -188,6 +191,7 @@ impl Default for EngineConfig {
             triggered_mask: Arc::new(AtomicU32::new(0)),
             matched_count: Arc::new(AtomicU64::new(0)),
             rate_pps: Arc::new(AtomicU32::new(0)),
+            engine_exited: Arc::new(AtomicBool::new(false)),
         }
     }
 }

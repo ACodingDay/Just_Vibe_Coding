@@ -10,7 +10,7 @@ pub use packet::Packet;
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, TryLockError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -23,6 +23,9 @@ use effects::{bandwidth, drop, duplicate, lag, ood, reset, tamper, throttle};
 pub const CLOCK_WAIT_MS: u64 = 40;
 /// 最大包长（C 原版 MAX_PACKETSIZE）
 pub const MAX_PACKET_SIZE: usize = 0xFFFF;
+/// recv 线程可容忍的连续"非停止类"错误次数，超过即放弃并转入正常停止收尾。
+/// 修复：原先对这些错误码直接 `continue`，驱动异常时会退化成 100% 单核忙等。
+const RECV_ERROR_GIVE_UP: u32 = 50;
 
 /// 模块触发位掩码（与 C 原版 modules 数组顺序一致）
 pub const BIT_LAG: u32 = 1 << 0;
@@ -33,6 +36,20 @@ pub const BIT_OOD: u32 = 1 << 4;
 pub const BIT_TAMPER: u32 = 1 << 5;
 pub const BIT_RESET: u32 = 1 << 6;
 pub const BIT_BANDWIDTH: u32 = 1 << 7;
+
+/*
+ * ── 包队列方向约定（全模块统一，修复回注顺序时确立）────────────────────
+ * EngineState.queue 这个 VecDeque：**队首 = 下一个回注的包，队尾 = 最后回注**，
+ * 对应 C 原版"单条链表 + appendNode 入尾 + sendAllListPackets 从 head 遍历"。
+ *
+ *   - recv_loop 收到新包 → push_back（新到的排到最后发）
+ *   - send_all          → pop_front 取包回注
+ *   - 效果要把"更早、应优先发出"的包放回队首：lag 超时放行、ood 暂存释放
+ *   - 效果要整组按时间顺序放回：lag / throttle 的 close_down 用尾插
+ *
+ * 任何一处把两端用反，都会造成 TCP 乱序（表现为工具自身引入的 reordering）。
+ * ────────────────────────────────────────────────────────────────────────
+ */
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EngineMode {
@@ -104,9 +121,15 @@ impl Engine {
             })?,
         );
 
-        // 统计随引擎生命周期重置（matched_count 跨启动清零，避免 UI 从 0 跳回旧累计值）
+        // 统计与状态位随引擎生命周期重置：跨启动全部清零，避免 UI 从 0 跳回旧值
+        // （修复：原先只清 matched_count / rate_pps，send_state 与 triggered_mask
+        // 会带上上一轮运行的残留 —— 新一轮 Start 后先发一片触发灯、甚至残留的
+        // 红色发送失败灯，直到 UI 下一次 200ms 轮询才纠正）
         config.matched_count.store(0, Ordering::Relaxed);
         config.rate_pps.store(0, Ordering::Relaxed);
+        config.send_state.store(SEND_STATUS_NONE, Ordering::Relaxed);
+        config.triggered_mask.store(0, Ordering::Relaxed);
+        config.engine_exited.store(false, Ordering::Relaxed);
 
         let state = Arc::new(Mutex::new(EngineState::default()));
         let stop = Arc::new(AtomicBool::new(false));
@@ -121,15 +144,35 @@ impl Engine {
                 .spawn(move || recv_loop(&handle, &state, &stop, &config, mode))
                 .map_err(|e| t!("netclumsy.status.thread_failed.format", error = e.to_string()))?
         };
-        let clock_thread = {
-            let handle = handle.clone();
-            let state = state.clone();
-            let stop = stop.clone();
-            let config = config.clone();
-            thread::Builder::new()
-                .name("netclumsy-clock".into())
-                .spawn(move || clock_loop(&handle, &state, &stop, &config, mode))
-                .map_err(|e| t!("netclumsy.status.thread_failed.format", error = e.to_string()))?
+        let clock_handle = handle.clone();
+        let clock_state = state.clone();
+        let clock_stop = stop.clone();
+        let clock_config = config.clone();
+        // 修复：clock 线程负责收尾（close_down + send_all + 关句柄）。它起不来的话
+        // 没人关句柄，recv 线程会永久阻塞在 WinDivertRecv，已劫持的包也就永不回注。
+        // 所以失败路径必须自己把 recv 线程放出来并等它退出，再返回错误。
+        let clock_thread = match thread::Builder::new()
+            .name("netclumsy-clock".into())
+            .spawn(move || {
+                clock_loop(
+                    &clock_handle,
+                    &clock_state,
+                    &clock_stop,
+                    &clock_config,
+                    mode,
+                )
+            }) {
+            Ok(t) => t,
+            Err(e) => {
+                stop.store(true, Ordering::SeqCst);
+                handle.close();
+                let _ = recv_thread.join();
+                return Err(t!(
+                    "netclumsy.status.thread_failed.format",
+                    error = e.to_string()
+                )
+                .to_string());
+            }
         };
 
         Ok(Self {
@@ -174,29 +217,45 @@ fn recv_loop(
     mode: EngineMode,
 ) {
     let mut buf = vec![0u8; MAX_PACKET_SIZE];
+    let mut consec_errs: u32 = 0;
     loop {
         let (len, addr) = match handle.recv(&mut buf) {
-            Ok(v) => v,
+            Ok(v) => {
+                consec_errs = 0;
+                v
+            }
             Err(e) => {
                 if stop.load(Ordering::SeqCst) {
                     break;
                 }
-                match e.raw_os_error() {
-                    Some(code)
-                        if code == ERROR_INVALID_HANDLE.0 as i32
-                            || code == ERROR_OPERATION_ABORTED.0 as i32 =>
-                    {
-                        // 句柄被关闭（停止流程），退出
-                        break;
-                    }
-                    _ => continue,
+                let code = e.raw_os_error().unwrap_or(-1);
+                if code == ERROR_INVALID_HANDLE.0 as i32
+                    || code == ERROR_OPERATION_ABORTED.0 as i32
+                {
+                    // 句柄被关闭（停止流程），退出
+                    break;
                 }
+                // 修复：原实现是裸 `continue`，遇到持续性错误（驱动异常、句柄被
+                // 外部失效等）会退化成 100% 单核忙等。改为退避 + 计数；超过阈值
+                // 就置停止标志，交给 clock 线程走正常收尾（close_down + send_all +
+                // 关句柄），而不是让已劫持的包烂在驱动队列里；同时把发送灯转红。
+                consec_errs += 1;
+                if consec_errs >= RECV_ERROR_GIVE_UP {
+                    config.send_state.store(SEND_STATUS_FAIL, Ordering::Relaxed);
+                    stop.store(true, Ordering::SeqCst);
+                    break;
+                }
+                thread::sleep(Duration::from_millis(CLOCK_WAIT_MS));
+                continue;
             }
         };
 
         config.matched_count.fetch_add(1, Ordering::Relaxed);
 
-        let mut guard = state.lock().unwrap();
+        // 修复：原先 `.unwrap()` 会在 Mutex 被 poison（某个效果线程内 panic）时
+        // 让 recv 线程连带 panic，收尾路径全断、队列里的包永不回注。
+        // poison 不该放弃处理，取 into_inner 继续跑。
+        let mut guard = state.lock().unwrap_or_else(|e| e.into_inner());
         if stop.load(Ordering::SeqCst) {
             // C 原版："Lost last recved packet but user stopped."
             break;
@@ -221,21 +280,44 @@ fn clock_loop(
     loop {
         if stop.load(Ordering::SeqCst) {
             // 收尾：关闭所有已启用效果 → 回注剩余包 → 关闭句柄中断 recv
-            let mut guard = state.lock().unwrap();
+            // 修复：与 recv_loop 同样兜住 poison —— 收尾比"谁弄坏了锁"重要得多，
+            // 走到这里就必须把包放回网络栈。
+            let mut guard = state.lock().unwrap_or_else(|e| e.into_inner());
             close_down_all(&mut guard, config);
-            send::send_all(handle, &mut guard.queue, config);
+            // 修复：capture 模式（SNIFF）下队列里的是流量**副本**，回注等于把同一
+            // 个包重复注入网络栈，且嗅探句柄本就不该 send。此前不出事只是因为每步
+            // 都 clear 了队列，属于巧合成立。
+            if mode == EngineMode::Start {
+                send::send_all(handle, &mut guard.queue, config);
+            }
+            guard.queue.clear();
+            // 修复：停机即归零，否则 UI 下一次轮询会从原子里读回最后的速率
+            config.rate_pps.store(0, Ordering::Relaxed);
             handle.close();
+            // 停止标志区分不了「用户点停止」还是「recv 自行放弃」，统一置位；
+            // UI 只在引擎仍在手上时消费（用户主动停止时引擎已被 take，天然跳过）
+            config.engine_exited.store(true, Ordering::Relaxed);
             return;
         }
 
         // try_lock 对应 C 的 WaitForSingleObject(mutex, 40ms)：锁忙则跳过本轮
-        if let Ok(mut guard) = state.try_lock() {
-            consume_step(handle, &mut guard, config, mode);
-            // 发布当前包速率（窗口未满为 -1 → 显示 0）；流量停止时窗口滑空自然衰减为 0
-            let now = now_ms();
-            let pps = guard.rate.calculate(now).max(0) as u32;
-            config.rate_pps.store(pps, Ordering::Relaxed);
-        }
+        // 修复："锁被 poison" 和 "锁忙" 是两回事。原实现把 Poisoned 也当成跳过，
+        // 于是任一效果线程 panic 之后，clock 线程就永久静默空转，lag/throttle
+        // 缓冲里的包再也发不出去。poison 时取 into_inner 继续收尾式处理。
+        let mut guard = match state.try_lock() {
+            Ok(g) => g,
+            Err(TryLockError::Poisoned(e)) => e.into_inner(),
+            // 锁忙（recv 线程正持有）→ 与 C 的 WaitForSingleObject 超时同样跳过本轮
+            Err(TryLockError::WouldBlock) => {
+                thread::sleep(Duration::from_millis(CLOCK_WAIT_MS));
+                continue;
+            }
+        };
+        consume_step(handle, &mut guard, config, mode);
+        // 发布当前包速率（窗口未满为 -1 → 显示 0）；流量停止时窗口滑空自然衰减为 0
+        let now = now_ms();
+        let pps = guard.rate.calculate(now).max(0) as u32;
+        config.rate_pps.store(pps, Ordering::Relaxed);
         thread::sleep(Duration::from_millis(CLOCK_WAIT_MS));
     }
 }

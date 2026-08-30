@@ -38,6 +38,11 @@ impl RateHistory {
         self.samples.push_back(rate_pps as f64);
     }
 
+    /// 缓冲是否已全为 0：曲线里最后一根非零柱已滚出窗口，可停止重绘
+    pub fn is_flat_zero(&self) -> bool {
+        self.samples.iter().all(|v| *v == 0.0)
+    }
+
     /// (序号, 速率) 序列，供 AreaChart 消费
     fn points(&self) -> Vec<(usize, f64)> {
         self.samples
