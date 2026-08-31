@@ -14,9 +14,6 @@ netclumsy:
   tab.about:
     zh-CN: 关于
     en: About
-  tab.chain_hint:
-    zh-CN: "Lag → Drop → Throttle → Duplicate → OOD → Tamper → Reset → Bandwidth"
-    en: "Lag → Drop → Throttle → Duplicate → OOD → Tamper → Reset → Bandwidth"
   about.app_name:
     zh-CN: NetClumsy
     en: NetClumsy
@@ -89,27 +86,18 @@ netclumsy:
   effect.lag:
     zh-CN: 延迟
     en: Lag
-  effect.lag.en:
-    zh-CN: Lag
-    en: ""
   effect.lag.delay:
     zh-CN: 延迟 (ms)
     en: Delay (ms)
   effect.drop:
     zh-CN: 丢包
     en: Drop
-  effect.drop.en:
-    zh-CN: Drop
-    en: ""
   effect.drop.chance:
     zh-CN: 概率 (%)
     en: Chance (%)
   effect.throttle:
     zh-CN: 节流
     en: Throttle
-  effect.throttle.en:
-    zh-CN: Throttle
-    en: ""
   effect.throttle.chance:
     zh-CN: 触发概率 (%)
     en: Trigger Chance (%)
@@ -122,18 +110,12 @@ netclumsy:
   effect.bandwidth:
     zh-CN: 限带宽
     en: Bandwidth
-  effect.bandwidth.en:
-    zh-CN: Bandwidth
-    en: ""
   effect.bandwidth.limit:
     zh-CN: 上限 (KB/s)
     en: Limit (KB/s)
   effect.duplicate:
     zh-CN: 重复
     en: Duplicate
-  effect.duplicate.en:
-    zh-CN: Duplicate
-    en: ""
   effect.duplicate.count:
     zh-CN: 份数
     en: Count
@@ -143,18 +125,12 @@ netclumsy:
   effect.ood:
     zh-CN: 乱序
     en: Out of order
-  effect.ood.en:
-    zh-CN: Out of order
-    en: ""
   effect.ood.chance:
     zh-CN: 概率 (%)
     en: Chance (%)
   effect.tamper:
     zh-CN: 篡改
     en: Tamper
-  effect.tamper.en:
-    zh-CN: Tamper
-    en: ""
   effect.tamper.chance:
     zh-CN: 概率 (%)
     en: Chance (%)
@@ -164,9 +140,6 @@ netclumsy:
   effect.reset:
     zh-CN: 断连
     en: Set TCP RST
-  effect.reset.en:
-    zh-CN: Set TCP RST
-    en: ""
   effect.reset.chance:
     zh-CN: 概率 (%)
     en: Chance (%)

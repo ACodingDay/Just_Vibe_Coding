@@ -380,11 +380,13 @@ impl Render for MainWindow {
             .bg(cx.theme().background)
             // ① 自定义标题栏（品牌区 + 运行 Badge + 主题切换 + 窗口控制）
             .child(title_bar::render(self, cx))
-            // ② 分段 Tabs + 右侧效果链顺序提示
+            // ② 分段 Tabs + 右侧主题切换
             .child(
                 h_flex()
                     .px_4()
-                    .py_2()
+                    // 页签改用默认字号（更大更醒目），这里把纵向 padding 收一档，
+                    // 让整条高度仍贴近 DESIGN.md §3.2 的 36px 预算
+                    .py_1()
                     .items_center()
                     .gap_2()
                     .border_b_1()
@@ -392,7 +394,6 @@ impl Render for MainWindow {
                     .child(
                         TabBar::new("main-tabs")
                             .segmented()
-                            .small()
                             .selected_index(self.active_tab)
                             .on_click(cx.listener(|this, index: &usize, _, cx| {
                                 this.active_tab = *index;
@@ -402,13 +403,6 @@ impl Render for MainWindow {
                             .child(Tab::new().label(t!("netclumsy.tab.about").into_owned())),
                     )
                     .child(div().flex_1())
-                    .child(
-                        div()
-                            .text_size(px(11.))
-                            .text_color(cx.theme().muted_foreground)
-                            .font_family(cx.theme().mono_font_family.clone())
-                            .child(t!("netclumsy.tab.chain_hint").into_owned()),
-                    )
                     // 主题切换（标题栏是 OS 级 Drag 区，按钮放这里才能收到点击）
                     .child(
                         Button::new("btn-theme-toggle")

@@ -1,7 +1,7 @@
 //! 效果行组件（design/DESIGN.md §3.4）。
 //!
 //! 行结构（左 → 右）：触发 LED（10px 圆点 + 2px 柔光外圈）→ Switch →
-//! 双行名称（中文 13px/500 + 英文 11px/muted）→ 参数控件区（右对齐）。
+//! 名称（定宽 92px 列内单行居中，13px/500）→ 参数控件区（右对齐）。
 //! 固定行高 52px，行间 1px 分隔线，hover 背景 fg 4%，禁用行控件区降透明度。
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -27,11 +27,10 @@ const ROW_HEIGHT: f32 = 52.;
 /// 禁用行（Switch off）控件区不透明度（设计稿 .is-off 40-55%）
 const DISABLED_OPACITY: f32 = 0.45;
 
-/// 效果行骨架：LED + Switch + 双行名称 + 右端控件区
+/// 效果行骨架：LED + Switch + 单行居中名称 + 右端控件区
 fn effect_row(
     id: &'static str,
     title: SharedString,
-    subtitle: SharedString,
     triggered: bool,
     enabled: bool,
     controls: Vec<AnyElement>,
@@ -40,7 +39,6 @@ fn effect_row(
 ) -> AnyElement {
     let switch_id: SharedString = format!("{id}-switch").into();
     let fg = cx.theme().foreground;
-    let muted = cx.theme().muted_foreground;
 
     h_flex()
         .id(id)
@@ -57,11 +55,12 @@ fn effect_row(
                 .checked(enabled)
                 .on_click(on_toggle),
         )
-        // 双行名称：中文主标题 + 英文副标题（副标题为空时不占位）
+        // 效果名称：定宽列内单行居中（语言切换时这个 key 直接给出英文名）
         .child(
             v_flex()
                 .w(px(92.))
                 .flex_shrink_0()
+                .items_center()
                 .justify_center()
                 .when(!enabled, |this| this.opacity(DISABLED_OPACITY))
                 .child(
@@ -69,10 +68,7 @@ fn effect_row(
                         .text_sm()
                         .font_weight(FontWeight::MEDIUM)
                         .child(title),
-                )
-                .when(!subtitle.is_empty(), |this| {
-                    this.child(div().text_xs().text_color(muted).child(subtitle))
-                }),
+                ),
         )
         .child(div().flex_1())
         .child(
@@ -198,7 +194,6 @@ pub fn lag_row(cfg: &EngineConfig, input: &Entity<InputState>, triggered: bool, 
     effect_row(
         "effect-lag",
         t!("netclumsy.effect.lag").into_owned().into(),
-        t!("netclumsy.effect.lag.en").into_owned().into(),
         triggered,
         enabled,
         vec![
@@ -218,7 +213,6 @@ pub fn drop_row(cfg: &EngineConfig, input: &Entity<InputState>, triggered: bool,
     effect_row(
         "effect-drop",
         t!("netclumsy.effect.drop").into_owned().into(),
-        t!("netclumsy.effect.drop.en").into_owned().into(),
         triggered,
         enabled,
         vec![
@@ -245,7 +239,6 @@ pub fn throttle_row(
     effect_row(
         "effect-throttle",
         t!("netclumsy.effect.throttle").into_owned().into(),
-        t!("netclumsy.effect.throttle.en").into_owned().into(),
         triggered,
         enabled,
         vec![
@@ -282,7 +275,6 @@ pub fn duplicate_row(
     effect_row(
         "effect-duplicate",
         t!("netclumsy.effect.duplicate").into_owned().into(),
-        t!("netclumsy.effect.duplicate.en").into_owned().into(),
         triggered,
         enabled,
         vec![
@@ -304,7 +296,6 @@ pub fn ood_row(cfg: &EngineConfig, input: &Entity<InputState>, triggered: bool, 
     effect_row(
         "effect-ood",
         t!("netclumsy.effect.ood").into_owned().into(),
-        t!("netclumsy.effect.ood.en").into_owned().into(),
         triggered,
         enabled,
         vec![
@@ -325,7 +316,6 @@ pub fn tamper_row(cfg: &EngineConfig, input: &Entity<InputState>, triggered: boo
     effect_row(
         "effect-tamper",
         t!("netclumsy.effect.tamper").into_owned().into(),
-        t!("netclumsy.effect.tamper.en").into_owned().into(),
         triggered,
         enabled,
         vec![
@@ -356,7 +346,6 @@ pub fn reset_row(cfg: &EngineConfig, input: &Entity<InputState>, triggered: bool
     effect_row(
         "effect-reset",
         t!("netclumsy.effect.reset").into_owned().into(),
-        t!("netclumsy.effect.reset.en").into_owned().into(),
         triggered,
         enabled,
         vec![
@@ -391,7 +380,6 @@ pub fn bandwidth_row(cfg: &EngineConfig, input: &Entity<InputState>, triggered: 
     effect_row(
         "effect-bandwidth",
         t!("netclumsy.effect.bandwidth").into_owned().into(),
-        t!("netclumsy.effect.bandwidth.en").into_owned().into(),
         triggered,
         enabled,
         vec![
