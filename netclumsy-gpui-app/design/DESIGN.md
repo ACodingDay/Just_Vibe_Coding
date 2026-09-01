@@ -1,8 +1,10 @@
 # NetClumsy 主窗口界面设计规范
 
-> 版本：v1.0（2026-08-15）
+> 版本：v1.1（2026-09-01）
 > 适用：`netclumsy` Rust + GPUI 桌面应用（Windows）
 > 配套交付物：`index.html`（高保真交互稿）、`design-plan.json`（设计计划）、`netclumsy-main-window-dark.png` / `netclumsy-main-window-light.png`（画布截图）
+>
+> **优先级约定（v1.1）**：GPUI Component 官方《设计指南》（longbridge.github.io/gpui-component/zh-CN/docs/design-guides）优先于本文。冲突处以官方指南为准：字号/间距走官方 scale 与 rem helper、语义色克制使用、状态不只靠颜色、Badge/主按钮按语义使用。本文 v1.1 已按官方指南修订（标注 v1.1 的条目）。
 
 ## 一、背景与目标
 
@@ -39,8 +41,8 @@ NetClumsy 是 clumsy（MIT）的 Rust + GPUI 重写，基于 WinDivert 驱动对
 
 ### 3.1 TitleBar 标题栏（40px）
 
-- 左侧：应用 logo（内联 SVG 圆角方形 + 波形线）+ 「NetClumsy」品牌名（13px，600 字重）+ 「网络包劣化工具」副标题（12px，muted）。
-- 中部偏左：运行状态 Badge——引擎未启动时不显示；运行中显示「运行中」（accent 绿描边 + 浅底）。
+- 左侧：应用 logo（内联 SVG 圆角方形 + 波形线）+ 「NetClumsy」品牌名（14px / text_sm，600 字重）。
+- **v1.1**：运行状态不再在标题栏展示（原「运行中」Badge 删除）。运行状态统一由统计栏的状态行承载（状态点 + 状态文案，信息更完整），避免同一状态在标题栏 / 过滤区 / 统计栏三处重复强调。
 - 右侧：窗口控制按钮（最小化/最大化/关闭），关闭按钮 hover 用 danger 色。GPUI 侧用系统窗口按钮或 `TitleBar` 自带窗口控制。
 - 背景：`--seed-surface`；底部 1px 分隔线。可整条区域拖拽移动窗口。
 
@@ -57,31 +59,34 @@ NetClumsy 是 clumsy（MIT）的 Rust + GPUI 重写，基于 WinDivert 驱动对
 第一行（过滤器，高 ~40px）：
 
 - 「过滤器」标签（12px，muted）+ 过滤器输入框（flex 占满剩余宽度，等宽字体 12px，高 32px，圆角 `--seed-radius`）。
-- 运行中时输入框锁定（引擎启动后过滤条件不可改），右侧内嵌「引擎运行中」锁定标签；就绪/停止状态可编辑。
+- 运行中时输入框锁定（引擎启动后过滤条件不可改，用 read-only 而非 disabled，与禁用行区分），右侧内嵌「引擎运行中」锁定标签；就绪/停止状态可编辑。
 - 校验失败时在输入框下方显示红色错误文案（对应 `status.filter_syntax_error` / `status.filter_invalid`）。
 
 第二行（控制行，高 ~40px）：
 
-- 预设 Select（宽约 230px，标签「预设」），内容来自 `config.txt`（`wsl2 ws 8012 both / uplink / downlink / no-loopback` 等），选中后回填过滤器输入框。
-- 发送状态灯（三态，见 §6.3）+ 「捕获」按钮（运行中禁用；SNIFF 嗅探模式入口）+ 「启动」按钮（主按钮，主色填充）/「停止」按钮（运行时替换启动按钮，danger 描边样式）。
-- 右侧：「管理员权限」Badge（warning 琥珀色），未提权时提示 `status.requires_admin`。
+- 预设 Select（宽 224px（`w_56`），标签「预设」），内容来自 `config.txt`（`wsl2 ws 8012 both / uplink / downlink / no-loopback` 等），选中后回填过滤器输入框。
+- 发送状态灯（三态，见 §6.3；**v1.1**：灯带 tooltip 文字，状态不只靠颜色表达）+ 「捕获」按钮（**v1.1**：outline 变体，运行中仅 disabled，不随状态切换变体）+ 「启动」按钮（主按钮，主色填充）/「停止」按钮（运行时替换启动按钮，danger）。
+- **v1.1**：启动 / 捕获 / 停止注册全局快捷键（F5 / F6 / Shift+F5），按钮 tooltip 自动展示快捷键（`Button::tooltip_with_action`）。
+- 右侧：管理员状态章（**v1.1**：用 gpui-component `Tag` 组件，不再手绘 chip）：未提权 / 引擎失败 → danger；管理员 + 运行中 → success；管理员 + 就绪 → **中性 secondary**（就绪不是警告，warning 留给真实告警）。
 
 ### 3.4 EffectList 效果列表（8 行 × 52px）
 
-每行结构（左 → 右）：
+每行结构（左 → 右；**v1.1** 修订列顺序与栅格）：
 
 | 元素 | 规格 |
 |---|---|
-| 触发指示灯 LED | 10px 圆点；三态：灰（未触发）/绿（近 200ms 轮询窗口内触发）/红（发送异常关联）；带 2px 柔光（color-mix 同色 35% 透明外圈） |
-| 效果开关 Switch + 名称 | Switch 开启 = 主色；名称双行：中文主标题 13px/500 + 英文名 11px/muted（如「延迟」+「Lag」） |
-| 方向复选框 | 「入站」「出站」Checkbox，独立控制每方向是否生效（对齐引擎 `check_direction` 语义） |
-| 参数输入区 | 每个参数 = 小标签（12px，muted）+ 数字输入框（等宽字体，宽 64–76px，高 28px）+ 单位（ms/%/KB/s/份） |
+| 触发指示灯 LED | 10px 圆点；三态：灰（未触发）/绿（近 200ms 轮询窗口内触发）/红（发送异常关联）；带 2px 柔光（同色 35% 透明外圈）；**v1.1**：灯带 tooltip 说明状态（状态不只靠颜色） |
+| 效果开关 Switch + 名称 | Switch 开启 = 主色；名称**单行居中**（14px / text_sm / 500，v1.1 取消英文双行副题——i18n 下效果 key 本身即英文名） |
+| 方向复选框 | 「入站」「出站」Checkbox，**紧跟名称列**（前面的元素全部定宽，因此每行落位相同，形成稳定 lane） |
+| 弹性留白 | `flex_1` 吸收剩余宽度 |
+| 附加选项 + 参数区 | 附加选项（Checkbox / 按钮）在前，参数组（标签 + 输入框）右对齐收口；**「概率」输入框在所有行共享最右 lane**（可比较数字对齐），输入框统一 64px（`w_16`），标签紧贴自己的输入框 |
 
 行状态：
 
 - 启用行：正常前景色，控件可交互。
 - 禁用行（Switch off）：整行 `.is-off`——文字与控件降至 muted 40–55% 不透明度，输入框只读感；Switch 仍可点击（这是唯一的行内主操作）。
 - 行 hover：背景 `color-mix(in srgb, var(--seed-fg) 4%, transparent)`；行间 1px 分隔线。
+- **v1.1**：行高 52px 以 `rems(3.25)` 表达（随基础字号缩放），名称列 92px 以 `rems(5.75)` 表达；其余尺寸走 Tailwind 系 rem helper。
 
 八个效果的控件矩阵（参数范围与引擎一致，来自 `docs/TODO.md` 与 C 原版）：
 
@@ -104,11 +109,11 @@ NetClumsy 是 clumsy（MIT）的 Rust + GPUI 重写，基于 WinDivert 驱动对
 
 ### 3.5 StatsBar 统计栏（84px）
 
-背景 `--seed-surface`，顶部 1px 分隔线。三段式：
+背景 `--seed-surface`，顶部 1px 分隔线。三段式（**v1.1**：整体高度 5.25rem，曲线区 224×36，字号对齐官方 scale）：
 
-- 左：状态文案（13px）——当前为运行中的 `status.started`（「已启动过滤，启用效果后实时生效。」，accent 绿）；其下 11px muted 辅助行（过滤条件摘要）。错误状态切换为 danger 红。
-- 中：迷你速率曲线（Sparkline，220 × 36）。SVG 折线 + 渐变面积填充（accent 绿），右上角文字锚点显示当前速率值，左上角「近 30 秒」窗口标注。数据源：UI 200ms 轮询 `rate_pps`，本地维护 30 秒环形缓冲。
-- 右：两个读数——「包速率 1,284 包/秒」（数字 18px/600 等宽，对应 `window.stats.rate.format`）与分隔线后「匹配包 12,958」（对应 `status.matched.format`），标签 11px muted。
+- 左：状态文案（14px / text_sm）——当前为运行中的 `status.started`（「已启动过滤，启用效果后实时生效。」，accent 绿）；其下 12px muted 辅助行（过滤条件摘要）。错误状态切换为 danger 红。
+- 中：迷你速率曲线（Sparkline，224 × 36）。SVG 折线 + 渐变面积填充（accent 绿），右上角文字锚点显示当前速率值，左上角「近 30 秒」窗口标注（均 12px）。数据源：UI 200ms 轮询 `rate_pps`，本地维护 30 秒环形缓冲。
+- 右：两个读数——「包速率 1,284 包/秒」（数字 18px / text_lg / 600 等宽，对应 `window.stats.rate.format`）与分隔线后「匹配包 12,958」（对应 `status.matched.format`），标签 12px muted。
 
 ## 四、色彩系统（Seed Token）
 
@@ -157,10 +162,12 @@ GPUI 侧对应 Theme 的 dark/light 两套 token 注册，组件不写死颜色�
 ## 五、字体与间距
 
 - 字体栈：系统 UI 字体（Windows 上为 Segoe UI Variable / Microsoft YaHei UI 回退）；数字、过滤表达式、效果链顺序用等宽栈（Cascadia Mono / Consolas 回退）。
-- 字号体系：18px（大读数）/ 13px（正文、按钮、主标题）/ 12px（标签、输入）/ 11px（辅助、Badge、英文副标题）。最多 3 个字重：400 / 500 / 600。
+- **v1.1 字号体系（对齐官方设计指南 scale：12/14/16/18/20）**：18px（`text_lg`，大读数）/ 14px（`text_sm`，正文、按钮、主标题）/ 12px（`text_xs`，标签、输入、辅助、Badge）。取消自定的 11px / 13px 档位。最多 3 个字重：400 / 500 / 600。
+- **v1.1 尺寸表达（官方指南：application layout 不得直接调用 `px(...)`）**：尺寸一律走 rem-based helper（`w_16`、`h_9`、`text_sm` 等）或 `rems(...)`；px 仅保留真实物理边界——1px hairline、窗口默认尺寸、指示灯圆点等经过审查的例外。
 - 间距基数 4px：区块左右内边距 16px，行内元素间隙 8/12px，效果行内容左右边距 16px。
-- 圆角：输入框/按钮 6px，Badge/窗口按钮 6px，窗口 12px，Switch 全圆。
-- 焦点可见：键盘焦点统一 2px `--seed-primary` 外环（`outline` 或 box-shadow），对比度满足 WCAG AA（正文 ≥ 4.5:1，深色主题已校验）。
+- 圆角：统一取自主题 `radius`（6px），不写死；Switch 全圆用 `rounded_full`。
+- 焦点可见：键盘焦点统一主题 ring 色（`--seed-primary`）外环，对比度满足 WCAG AA（正文 ≥ 4.5:1，深色主题已校验）。
+- **v1.1 键盘路径**：启动 F5 / 捕获 F6 / 停止 Shift+F5（`actions!` + `bind_keys`，根容器 `on_action` 接住）；按钮 tooltip 自动展示快捷键。
 
 ## 六、状态矩阵
 
@@ -192,7 +199,7 @@ Switch off → 整行降透明度、参数只读；Switch on → 可交互；触
 |---|---|---|
 | `titlebar` | `TitleBar` | 品牌区 + Badge + 窗口控制；可拖拽 |
 | `tabs-bar` | `Tabs` | 分段样式；右侧提示文字为普通 `div`/Label |
-| `filter-bar` | `Input` + `Select` + `Button` + `Badge` + `Checkbox` | 过滤器 Input 等宽字体；运行中 `disabled` |
+| `filter-bar` | `Input` + `Select` + `Button` + `Tag` + `Checkbox` | 过滤器 Input 等宽字体；运行中 `disabled`；状态章用 `Tag` 组件 |
 | `effect-row` | `Switch` + `Checkbox` + `Input` + `Button` + 自定义 LED | LED 为 10px 圆点视图，按轮询值切换颜色 |
 | `stats-bar` | `StatusBar`（容器）+ `Chart`/Plot（sparkline）+ Label | 速率曲线用 Chart 的 area/line 系列，30 秒窗口 |
 

@@ -29,6 +29,15 @@ netclumsy:
   window.stop:
     zh-CN: 停止
     en: Stop
+  window.start.tip:
+    zh-CN: 开始对匹配的数据包应用劣化
+    en: Start applying effects to matching packets
+  window.capture.tip:
+    zh-CN: 仅统计匹配数量，不修改数据包
+    en: Count matching packets without modifying them
+  window.stop.tip:
+    zh-CN: 停止过滤并回注缓冲的数据包
+    en: Stop filtering and flush buffered packets
   window.presets:
     zh-CN: 预设
     en: Presets
@@ -41,6 +50,15 @@ netclumsy:
   window.send.label:
     zh-CN: 发送
     en: Send
+  send.ok:
+    zh-CN: 发送正常
+    en: Sending normally
+  send.fail:
+    zh-CN: 发送失败
+    en: Sending failed
+  send.idle:
+    zh-CN: 引擎未运行
+    en: Engine not running
   window.control.note:
     zh-CN: 停止后可修改过滤条件并重新开始
     en: Edit filter after stopping to restart
@@ -83,6 +101,12 @@ netclumsy:
   window.direction.outbound:
     zh-CN: 出站
     en: Outbound
+  effect.led.idle:
+    zh-CN: 近 200ms 未触发
+    en: Not triggered in the last 200ms
+  effect.led.triggered:
+    zh-CN: 近 200ms 内触发过
+    en: Triggered within the last 200ms
   effect.lag:
     zh-CN: 延迟
     en: Lag

@@ -1,13 +1,13 @@
-//! 统计栏（design/DESIGN.md §3.5，84px 三段式）。
+//! 统计栏（design/DESIGN.md §3.5，5.25rem 三段式）。
 //!
-//! 左：状态文案 + 过滤条件摘要；中：220×36 速率曲线（AreaChart，30 秒环形缓冲）；
+//! 左：状态文案 + 过滤条件摘要；中：224×36 速率曲线（AreaChart，30 秒环形缓冲）；
 //! 右：包速率 / 匹配包两个大读数。
 //! 曲线历史由 UI 侧 200ms 轮询 push（引擎只暴露当前 rate_pps）。
 
 use std::collections::VecDeque;
 
 use gpui::{
-    div, linear_color_stop, linear_gradient, px, AnyElement, App, FontWeight, IntoElement,
+    div, linear_color_stop, linear_gradient, px, rems, AnyElement, App, FontWeight, IntoElement,
     ParentElement, SharedString, Styled,
 };
 use gpui_component::chart::AreaChart;
@@ -66,7 +66,7 @@ fn format_thousands(v: u64) -> String {
     out
 }
 
-/// 大读数块：标签（11px muted）+ 数值（18px/600 等宽）+ 单位
+/// 大读数块：标签（12px muted）+ 数值（text_lg = 18px / 600 等宽）+ 单位
 fn readout(label: SharedString, value: String, unit: SharedString, cx: &App) -> AnyElement {
     v_flex()
         .gap_0p5()
@@ -83,7 +83,7 @@ fn readout(label: SharedString, value: String, unit: SharedString, cx: &App) -> 
                 .gap_1()
                 .child(
                     div()
-                        .text_size(px(18.))
+                        .text_lg()
                         .font_weight(FontWeight::SEMIBOLD)
                         .child(value),
                 )
@@ -138,7 +138,7 @@ pub fn render(view: &MainWindow, cx: &App) -> AnyElement {
     };
 
     h_flex()
-        .h(px(84.))
+        .h(rems(5.25))
         .flex_shrink_0()
         .px_4()
         .gap_4()
@@ -149,7 +149,7 @@ pub fn render(view: &MainWindow, cx: &App) -> AnyElement {
         // 左：状态 + 过滤条件摘要
         .child(
             v_flex()
-                .w(px(260.))
+                .w_64()
                 .flex_shrink_0()
                 .gap_1()
                 .justify_center()
@@ -157,7 +157,7 @@ pub fn render(view: &MainWindow, cx: &App) -> AnyElement {
                     h_flex()
                         .items_center()
                         .gap_2()
-                        .child(div().size(px(8.)).rounded_full().bg(status_color))
+                        .child(div().size_2().rounded_full().bg(status_color))
                         .child(
                             div()
                                 .text_sm()
@@ -176,11 +176,11 @@ pub fn render(view: &MainWindow, cx: &App) -> AnyElement {
                 ),
         )
         .child(div().flex_1())
-        // 中：速率曲线（220×36，左上窗口标注 + 右上当前值锚点）
+        // 中：速率曲线（224×36，左上窗口标注 + 右上当前值锚点）
         .child(
             div()
-                .w(px(220.))
-                .h(px(36.))
+                .w_56()
+                .h_9()
                 .flex_shrink_0()
                 .relative()
                 .child(sparkline)
@@ -189,7 +189,7 @@ pub fn render(view: &MainWindow, cx: &App) -> AnyElement {
                         .absolute()
                         .top_0()
                         .left_0()
-                        .text_size(px(11.))
+                        .text_xs()
                         .text_color(theme.muted_foreground)
                         .child(t!("netclumsy.stats.window_hint").into_owned()),
                 )
@@ -198,7 +198,7 @@ pub fn render(view: &MainWindow, cx: &App) -> AnyElement {
                         .absolute()
                         .top_0()
                         .right_0()
-                        .text_size(px(11.))
+                        .text_xs()
                         .text_color(chart_color)
                         .child(view.packet_rate.to_string()),
                 ),
@@ -210,7 +210,7 @@ pub fn render(view: &MainWindow, cx: &App) -> AnyElement {
             t!("netclumsy.stats.rate.unit").into_owned().into(),
             cx,
         ))
-        .child(div().w(px(1.)).h(px(36.)).bg(theme.border))
+        .child(div().w(px(1.)).h_9().bg(theme.border))
         .child(readout(
             t!("netclumsy.stats.matched.label").into_owned().into(),
             format_thousands(view.matched_count),

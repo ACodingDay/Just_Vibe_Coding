@@ -29,6 +29,10 @@ use crate::ui::{effect_panel, filter_bar, stats_bar, theme, title_bar};
 /// 指示灯轮询周期（与 C 原版 ICON_UPDATE_MS 一致）
 const POLL_INTERVAL_MS: u64 = 200;
 
+// 全局动作：键盘路径（main.rs 里 bind_keys：F5 启动 / F6 捕获 / Shift+F5 停止）。
+// 按键派发到焦点元素后沿祖先链冒泡，由根容器的 on_action 接住。
+actions!(netclumsy, [StartFilter, StopFilter, CaptureFilter]);
+
 pub struct MainWindow {
     pub(crate) config: Arc<EngineConfig>,
     pub(crate) engine: Option<Engine>,
@@ -378,14 +382,28 @@ impl Render for MainWindow {
         v_flex()
             .size_full()
             .bg(cx.theme().background)
-            // ① 自定义标题栏（品牌区 + 运行 Badge + 主题切换 + 窗口控制）
+            // 键盘路径：动作处理挂在根容器，按键从焦点元素冒泡上来
+            .on_action(cx.listener(|this, _: &StartFilter, _, cx| {
+                if this.engine.is_none() {
+                    this.start_engine(EngineMode::Start, cx);
+                }
+            }))
+            .on_action(cx.listener(|this, _: &StopFilter, _, cx| {
+                if this.engine.is_some() {
+                    this.stop_engine(cx);
+                }
+            }))
+            .on_action(cx.listener(|this, _: &CaptureFilter, _, cx| {
+                if this.engine.is_none() {
+                    this.start_engine(EngineMode::Capture, cx);
+                }
+            }))
+            // ① 自定义标题栏（品牌区 + 窗口控制）
             .child(title_bar::render(self, cx))
             // ② 分段 Tabs + 右侧主题切换
             .child(
                 h_flex()
                     .px_4()
-                    // 页签改用默认字号（更大更醒目），这里把纵向 padding 收一档，
-                    // 让整条高度仍贴近 DESIGN.md §3.2 的 36px 预算
                     .py_1()
                     .items_center()
                     .gap_2()

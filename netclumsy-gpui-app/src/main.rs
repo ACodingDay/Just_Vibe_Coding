@@ -12,7 +12,7 @@ mod ui;
 
 use assets::Assets;
 use engine::EngineConfig;
-use ui::main_window::MainWindow;
+use ui::main_window::{CaptureFilter, MainWindow, StartFilter, StopFilter};
 
 rust_i18n::i18n!("locales", fallback = "en");
 
@@ -65,6 +65,13 @@ fn main() {
         gpui_component::init(cx);
         // 注册深/浅两套 seed token 主题，默认深色（design/DESIGN.md §4）
         ui::theme::init(cx);
+
+        // 键盘路径：启动/捕获/停止（按钮 tooltip 会自动展示对应快捷键）
+        cx.bind_keys([
+            KeyBinding::new("f5", StartFilter, None),
+            KeyBinding::new("f6", CaptureFilter, None),
+            KeyBinding::new("shift-f5", StopFilter, None),
+        ]);
 
         let config = Arc::new(EngineConfig::default());
 
