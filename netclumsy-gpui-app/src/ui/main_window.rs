@@ -9,14 +9,15 @@ use std::time::Duration;
 
 use gpui::*;
 use gpui_component::button::{Button, ButtonVariants};
+use gpui_component::dialog::{DialogAction, DialogClose, DialogFooter};
 use gpui_component::input::{InputEvent, InputState};
 use gpui_component::select::{SearchableVec, SelectEvent, SelectState};
 use gpui_component::tab::{Tab, TabBar};
-use gpui_component::{h_flex, v_flex, ActiveTheme as _, IconName, IndexPath, Sizable as _};
+use gpui_component::{h_flex, v_flex, ActiveTheme as _, Icon, IconName, IndexPath, Root, Sizable as _, WindowExt as _};
 use rust_i18n::t;
 
 use crate::args::ParsedArgs;
-use crate::elevate::is_run_as_admin;
+use crate::elevate::is_admin_for_ui;
 use crate::engine::{
     Engine, EngineConfig, EngineMode, BIT_BANDWIDTH, BIT_DROP, BIT_DUPLICATE, BIT_LAG, BIT_OOD,
     BIT_RESET, BIT_TAMPER, BIT_THROTTLE,
@@ -203,11 +204,72 @@ impl MainWindow {
             triggered_mask: 0,
             status_text: t!("netclumsy.status.idle").into_owned().into(),
             active_tab: 0,
-            is_admin: is_run_as_admin(),
+            is_admin: is_admin_for_ui(),
             engine_failed: false,
             rate_history: RateHistory::new(),
             _subscriptions: subscriptions,
         };
+
+        // 非管理员启动 → 弹出对话框提示（defer 到下一帧，确保 Root 已挂载，
+        // 否则 open_dialog 内部 Root::update 会 panic）
+        crate::debug_log(&format!(
+            "ui is_admin={} (NETCLUMSY_FORCE_NOT_ADMIN={:?})",
+            this.is_admin,
+            std::env::var("NETCLUMSY_FORCE_NOT_ADMIN").ok()
+        ));
+        if !this.is_admin {
+            crate::debug_log("scheduling admin dialog via defer_in");
+            cx.defer_in(window, |_, window, cx| {
+                crate::debug_log("defer fired: opening admin dialog");
+                window.open_dialog(cx, |dialog, _, cx| {
+                    dialog
+                        .child(
+                            v_flex()
+                                .items_center()
+                                .gap_3()
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .rounded_full()
+                                        .bg(cx.theme().warning.opacity(0.15))
+                                        .size_12()
+                                        .text_color(cx.theme().warning)
+                                        .child(Icon::new(IconName::TriangleAlert).size_6()),
+                                )
+                                .child(
+                                    div()
+                                        .text_center()
+                                        .child(t!("netclumsy.window.admin.dialog_message").into_owned()),
+                                ),
+                        )
+                        .footer(
+                            DialogFooter::new()
+                                .child(
+                                    DialogClose::new().child(
+                                        Button::new("btn-admin-later")
+                                            .outline()
+                                            .label(t!("netclumsy.window.admin.later").into_owned()),
+                                    ),
+                                )
+                                .child(
+                                    DialogAction::new().child(
+                                        Button::new("btn-admin-now")
+                                            .primary()
+                                            .label(t!("netclumsy.window.admin.now").into_owned()),
+                                    ),
+                                ),
+                        )
+                        .on_ok(|_, _, cx| {
+                            // 直接退出，由用户自行以管理员身份重启
+                            crate::debug_log("admin dialog: user chose quit");
+                            cx.quit();
+                            true
+                        })
+                });
+            });
+        }
 
         // --timeout：N 秒后自动退出（原版 uiTimeoutCb：秒 → 定时器 → 关闭程序）
         if let Some(secs) = parsed.timeout_secs {
@@ -378,7 +440,14 @@ impl Drop for MainWindow {
 }
 
 impl Render for MainWindow {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // gpui-component v0.5.2 的 Root::render 不自动挂载模态层，官方做法是在应用
+        // 根视图里手动渲染（同 story crate）：缺了这层 open_dialog/push_notification
+        // 只会入栈，界面上永远不显示。
+        let sheet_layer = Root::render_sheet_layer(window, cx);
+        let dialog_layer = Root::render_dialog_layer(window, cx);
+        let notification_layer = Root::render_notification_layer(window, cx);
+
         v_flex()
             .size_full()
             .bg(cx.theme().background)
@@ -444,5 +513,9 @@ impl Render for MainWindow {
             })
             // ④ 统计栏（所有页面共享）
             .child(stats_bar::render(self, cx))
+            // ⑤ 模态层（Dialog / Sheet / Notification），必须挂在内容之上
+            .children(sheet_layer)
+            .children(dialog_layer)
+            .children(notification_layer)
     }
 }

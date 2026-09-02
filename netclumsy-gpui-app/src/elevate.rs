@@ -38,6 +38,14 @@ pub fn is_run_as_admin() -> bool {
     }
 }
 
+/// 界面层的管理员判定：NETCLUMSY_FORCE_NOT_ADMIN=1 时强制按非管理员处理，
+/// 用于开发期验证提权提示对话框。配套行为见 main.rs：该开关同时会跳过自动
+/// 提权（UAC 提权子进程不继承环境变量，不走提权开关才能传进 GUI 进程）。
+pub fn is_admin_for_ui() -> bool {
+    !matches!(std::env::var("NETCLUMSY_FORCE_NOT_ADMIN").as_deref(), Ok("1"))
+        && is_run_as_admin()
+}
+
 /// 以管理员身份重启自身，并透传命令行参数。
 ///
 /// 改进自 C 原版 elevate.c：原版 ShellExecuteEx 不带 lpParameters，提权重启后
@@ -144,5 +152,18 @@ mod tests {
     fn no_args() {
         assert_eq!(tail("C:\\app\\netclumsy.exe"), None);
         assert_eq!(tail("\"C:\\app\\netclumsy.exe\""), None);
+    }
+
+    #[test]
+    fn force_not_admin_flag_only_accepts_1() {
+        // 与 is_admin_for_ui 同一套判断（纯字符串版，避免依赖进程环境变量）
+        fn forced(raw: Result<String, std::env::VarError>) -> bool {
+            matches!(raw.as_deref(), Ok("1"))
+        }
+        assert!(forced(Ok("1".into())));
+        assert!(!forced(Ok("0".into())));
+        assert!(!forced(Ok("".into())));
+        assert!(!forced(Ok("true".into())));
+        assert!(!forced(Err(std::env::VarError::NotPresent)));
     }
 }

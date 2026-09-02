@@ -68,6 +68,15 @@ netclumsy:
   window.admin.not_admin:
     zh-CN: 非管理员权限
     en: Not Admin
+  window.admin.dialog_message:
+    zh-CN: 未以管理员身份运行，过滤功能将无法生效。
+    en: Not running as administrator. Filtering will not work.
+  window.admin.later:
+    zh-CN: 稍后
+    en: Later
+  window.admin.now:
+    zh-CN: 立刻
+    en: Quit Now
   window.admin.failed:
     zh-CN: 引擎启动失败
     en: Engine Failed
