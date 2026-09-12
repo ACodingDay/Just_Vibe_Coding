@@ -9,6 +9,7 @@ pub use config::*;
 pub use packet::Packet;
 
 use std::collections::VecDeque;
+use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, TryLockError};
 use std::thread::{self, JoinHandle};
@@ -59,6 +60,39 @@ pub enum EngineMode {
     Start,
 }
 
+/// 引擎启动失败原因。区分类族以支撑 UI 的差异化反馈：
+/// 过滤器问题改表达式即可；设备打开失败多因未提权（通知带提权重启动作）。
+#[derive(Debug, Clone)]
+pub enum EngineError {
+    /// 过滤表达式语法错误（WinDivert ERROR_INVALID_PARAMETER）
+    FilterSyntax,
+    /// 过滤表达式无法解析（WinDivert InvalidInput）
+    FilterInvalid,
+    /// WinDivert 设备打开失败（常见：未以管理员身份运行）
+    Device { code: i32 },
+    /// 引擎线程创建失败
+    Spawn { error: String },
+}
+
+impl fmt::Display for EngineError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::FilterSyntax => write!(f, "{}", t!("netclumsy.status.filter_syntax_error")),
+            Self::FilterInvalid => write!(f, "{}", t!("netclumsy.status.filter_invalid")),
+            Self::Device { code } => write!(
+                f,
+                "{}",
+                t!("netclumsy.status.open_device_failed.format", code = code)
+            ),
+            Self::Spawn { error } => write!(
+                f,
+                "{}",
+                t!("netclumsy.status.thread_failed.format", error = error)
+            ),
+        }
+    }
+}
+
 /// 包处理引擎：复刻 C 原版双线程模型
 /// - recv 线程：WinDivertRecv → 加锁入队 → consume step
 /// - clock 线程：每 40ms 尝试加锁 → consume step（保证 lag/throttle 缓冲按时放行）；
@@ -106,17 +140,17 @@ impl Engine {
         filter: &str,
         mode: EngineMode,
         config: Arc<EngineConfig>,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, EngineError> {
         let handle = Arc::new(
             ffi::DivertHandle::open(filter, mode == EngineMode::Capture).map_err(|e| {
                 if e.raw_os_error() == Some(ERROR_INVALID_PARAMETER.0 as i32) {
-                    t!("netclumsy.status.filter_syntax_error").to_string()
+                    EngineError::FilterSyntax
                 } else if e.kind() == std::io::ErrorKind::InvalidInput {
-                    t!("netclumsy.status.filter_invalid").to_string()
+                    EngineError::FilterInvalid
                 } else {
-                    let code = e.raw_os_error().unwrap_or(-1);
-                    t!("netclumsy.status.open_device_failed.format", code = code)
-                        .to_string()
+                    EngineError::Device {
+                        code: e.raw_os_error().unwrap_or(-1),
+                    }
                 }
             })?,
         );
@@ -142,7 +176,7 @@ impl Engine {
             thread::Builder::new()
                 .name("netclumsy-recv".into())
                 .spawn(move || recv_loop(&handle, &state, &stop, &config, mode))
-                .map_err(|e| t!("netclumsy.status.thread_failed.format", error = e.to_string()))?
+                .map_err(|e| EngineError::Spawn { error: e.to_string() })?
         };
         let clock_handle = handle.clone();
         let clock_state = state.clone();
@@ -167,11 +201,7 @@ impl Engine {
                 stop.store(true, Ordering::SeqCst);
                 handle.close();
                 let _ = recv_thread.join();
-                return Err(t!(
-                    "netclumsy.status.thread_failed.format",
-                    error = e.to_string()
-                )
-                .to_string());
+                return Err(EngineError::Spawn { error: e.to_string() });
             }
         };
 

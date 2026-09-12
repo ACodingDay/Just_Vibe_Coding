@@ -1,17 +1,18 @@
-//! 统计栏（design/DESIGN.md §3.5，5.25rem 三段式）。
+//! 统计栏（design/DESIGN.md §3.5 精简版）。
 //!
-//! 左：状态文案 + 过滤条件摘要；中：224×36 速率曲线（AreaChart，30 秒环形缓冲）；
-//! 右：包速率 / 匹配包两个大读数。
+//! 只保留统计本体：速率曲线（AreaChart，30 秒环形缓冲）+ 包速率 / 匹配包
+//! 两个大读数。原先左侧的状态文案与过滤条件摘要已移除——过滤条件就在上方
+//! 输入框里可见，引擎状态由过滤区的管理员章与错误通知承载。
 //! 曲线历史由 UI 侧 200ms 轮询 push（引擎只暴露当前 rate_pps）。
 
 use std::collections::VecDeque;
 
-use gpui::{
+use gpui_kit::{
     div, linear_color_stop, linear_gradient, px, rems, AnyElement, App, FontWeight, IntoElement,
     ParentElement, SharedString, Styled,
 };
-use gpui_component::chart::AreaChart;
-use gpui_component::{h_flex, v_flex, ActiveTheme as _};
+use gpui_kit::component::chart::AreaChart;
+use gpui_kit::component::{h_flex, v_flex, ActiveTheme as _};
 use rust_i18n::t;
 
 use crate::ui::main_window::MainWindow;
@@ -82,8 +83,11 @@ fn readout(label: SharedString, value: String, unit: SharedString, cx: &App) -> 
                 .items_baseline()
                 .gap_1()
                 .child(
+                    // 读数用主题等宽字体：数字逐秒变化，比例字体宽度不一，
+                    // 右侧两个读数会持续左右抖动（design/DESIGN.md §五）
                     div()
                         .text_lg()
+                        .font_family(cx.theme().mono_font_family.clone())
                         .font_weight(FontWeight::SEMIBOLD)
                         .child(value),
                 )
@@ -99,18 +103,6 @@ fn readout(label: SharedString, value: String, unit: SharedString, cx: &App) -> 
 
 pub fn render(view: &MainWindow, cx: &App) -> AnyElement {
     let theme = cx.theme();
-    let running = view.engine.is_some();
-
-    // 状态文案着色：出错 danger / 运行中 success / 其他默认前景
-    let status_color = if view.engine_failed {
-        theme.danger
-    } else if running {
-        theme.success
-    } else {
-        theme.foreground
-    };
-
-    let filter_summary = view.filter_input.read(cx).value();
 
     // 速率曲线（数据不足 2 点时只渲染空容器，避免 ScalePoint 空域）
     let chart_color = theme.chart_1;
@@ -146,63 +138,8 @@ pub fn render(view: &MainWindow, cx: &App) -> AnyElement {
         .bg(theme.status_bar)
         .border_t_1()
         .border_color(theme.border)
-        // 左：状态 + 过滤条件摘要
-        .child(
-            v_flex()
-                .w_64()
-                .flex_shrink_0()
-                .gap_1()
-                .justify_center()
-                .child(
-                    h_flex()
-                        .items_center()
-                        .gap_2()
-                        .child(div().size_2().rounded_full().bg(status_color))
-                        .child(
-                            div()
-                                .text_sm()
-                                .text_color(status_color)
-                                .child(view.status_text.clone()),
-                        ),
-                )
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(theme.muted_foreground)
-                        .text_ellipsis()
-                        .overflow_hidden()
-                        .whitespace_nowrap()
-                        .child(filter_summary),
-                ),
-        )
-        .child(div().flex_1())
-        // 中：速率曲线（224×36，左上窗口标注 + 右上当前值锚点）
-        .child(
-            div()
-                .w_56()
-                .h_9()
-                .flex_shrink_0()
-                .relative()
-                .child(sparkline)
-                .child(
-                    div()
-                        .absolute()
-                        .top_0()
-                        .left_0()
-                        .text_xs()
-                        .text_color(theme.muted_foreground)
-                        .child(t!("netclumsy.stats.window_hint").into_owned()),
-                )
-                .child(
-                    div()
-                        .absolute()
-                        .top_0()
-                        .right_0()
-                        .text_xs()
-                        .text_color(chart_color)
-                        .child(view.packet_rate.to_string()),
-                ),
-        )
+        // 速率曲线（占满剩余宽度）
+        .child(div().flex_1().h_9().relative().child(sparkline))
         // 右：两个大读数
         .child(readout(
             t!("netclumsy.stats.rate.label").into_owned().into(),

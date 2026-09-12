@@ -10,16 +10,21 @@
 //!
 //! 未显式设置的字段由 apply_config 回退到内置 dark/light 默认值。
 
-use gpui::App;
-use gpui_component::theme::{Theme, ThemeConfig, ThemeMode};
+use gpui_kit::App;
+use gpui_kit::component::theme::{Theme, ThemeConfig, ThemeMode};
 use std::rc::Rc;
 
 /// 深色主题（默认）：seed-bg #0B0E14
+///
+/// 等宽字体不在此显式指定（`mono_font.family` 留空）：GPUI 对缺失字体的
+/// 首行排版直接 panic，且显式指定会跳过 gpui-kit 的内置回退探测。框架
+/// 默认在 Windows 上解析为 Consolas（Vista 起全系自带），无缺失风险；
+/// Cascadia Mono 仅 Win11 / 装有 Windows Terminal 的机器存在，init 里
+/// 探测到才显式采用（见 apply_mono_font）。
 const DARK_THEME_JSON: &str = r##"{
     "name": "NetClumsy Dark",
     "mode": "dark",
     "radius": 6,
-    "mono_font.family": "Cascadia Mono",
     "colors": {
         "background": "#0B0E14",
         "foreground": "#E6E9EF",
@@ -61,12 +66,11 @@ const DARK_THEME_JSON: &str = r##"{
     }
 }"##;
 
-/// 浅色主题（备选）：seed-bg #F5F6F8
+/// 浅色主题（备选）：seed-bg #F5F6F8（等宽字体策略同深色主题）
 const LIGHT_THEME_JSON: &str = r##"{
     "name": "NetClumsy Light",
     "mode": "light",
     "radius": 6,
-    "mono_font.family": "Cascadia Mono",
     "colors": {
         "background": "#F5F6F8",
         "foreground": "#171B23",
@@ -112,7 +116,7 @@ fn parse_config(json: &str) -> ThemeConfig {
     serde_json::from_str(json).expect("内置主题 JSON 必须可解析")
 }
 
-/// 注册深/浅两套 seed 主题，默认深色。须在 gpui_component::init 之后调用。
+/// 注册深/浅两套 seed 主题，默认深色。须在 gpui_kit::init 之后调用。
 pub fn init(cx: &mut App) {
     {
         let theme = Theme::global_mut(cx);
@@ -120,6 +124,23 @@ pub fn init(cx: &mut App) {
         theme.light_theme = Rc::new(parse_config(LIGHT_THEME_JSON));
     }
     Theme::change(ThemeMode::Dark, None, cx);
+    apply_mono_font(cx);
+}
+
+/// 优先采用 Cascadia Mono（视觉对齐设计稿；仅 Win11 / 装有 Windows Terminal
+/// 的机器存在）。未安装时不显式设置——框架默认 Consolas 全系自带，且
+/// gpui-kit 的内置探测会再兜底 Courier New → 系统字体。两套主题 JSON 均
+/// 不写 mono_font.family，因此这里的运行时覆盖在主题切换后依然保留
+/// （apply_config 只覆盖配置里 Some 的字段）。
+fn apply_mono_font(cx: &mut App) {
+    let has_cascadia = cx
+        .text_system()
+        .all_font_names()
+        .iter()
+        .any(|name| name == "Cascadia Mono");
+    if has_cascadia {
+        Theme::global_mut(cx).mono_font_family = "Cascadia Mono".into();
+    }
 }
 
 /// 深/浅主题切换（TitleBar 主题按钮回调）。

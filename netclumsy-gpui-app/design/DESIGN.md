@@ -59,7 +59,7 @@ NetClumsy 是 clumsy（MIT）的 Rust + GPUI 重写，基于 WinDivert 驱动对
 第一行（过滤器，高 ~40px）：
 
 - 「过滤器」标签（12px，muted）+ 过滤器输入框（flex 占满剩余宽度，等宽字体 12px，高 32px，圆角 `--seed-radius`）。
-- 运行中时输入框锁定（引擎启动后过滤条件不可改，用 read-only 而非 disabled，与禁用行区分），右侧内嵌「引擎运行中」锁定标签；就绪/停止状态可编辑。
+- **v1.2**：输入框恒为只读（read-only，非 disabled，可与禁用行区分）——过滤表达式来自 config.txt 预设，配置文件是唯一事实来源（与上游 clumsy 的使用方式一致），界面不提供编辑/保存；suffix 内嵌锁图标（tooltip 仅标注「只读 · 来自 config.txt」）+ 复制按钮。**路线图**：下一版本新增配置编辑页（Tab 页内编辑并保存 config.txt），届时放开只读限制。
 - 校验失败时在输入框下方显示红色错误文案（对应 `status.filter_syntax_error` / `status.filter_invalid`）。
 
 第二行（控制行，高 ~40px）：
@@ -175,11 +175,11 @@ GPUI 侧对应 Theme 的 dark/light 两套 token 注册，组件不写死颜色�
 
 | 状态 | 过滤器输入 | 捕获按钮 | 启动/停止 | 状态文案 |
 |---|---|---|---|---|
-| 就绪 idle | 可编辑 | 可用 | 显示「启动」（主色） | `status.idle` |
-| 捕获中 capture | 锁定 | 激活态 | 显示「停止」 | 嗅探计数增长 |
-| 运行中 running | 锁定 + 「引擎运行中」标签 | 禁用 | 显示「停止」（danger） | `status.started`（accent） |
-| 已停止 stopped | 可编辑 | 可用 | 显示「启动」 | `status.stopped` |
-| 出错 error | 可编辑 | 可用 | 显示「启动」 | 错误文案（danger，如 `status.start_failed.format` / `status.open_device_failed.format`） |
+| 就绪 idle | 只读 | 可用 | 显示「启动」（主色） | v1.2：状态行移除，见下注 |
+| 捕获中 capture | 只读 | 激活态 | 显示「停止」 | 嗅探计数增长 |
+| 运行中 running | 只读 | 禁用 | 显示「停止」（danger） | v1.2：状态行移除 |
+| 已停止 stopped | 只读 | 可用 | 显示「启动」 | v1.2：状态行移除 |
+| 出错 error | 只读 | 可用 | 显示「启动」 | **v1.2**：错误文案升级为常驻错误通知（重复失败去重，成功启动自动清除） |
 
 ### 6.2 效果行状态
 
@@ -209,7 +209,7 @@ Switch off → 整行降透明度、参数只读；Switch on → 可交互；触
 
 1. **轮询模型不变**：UI 200ms 轮询 `EngineConfig` 的原子量（`triggered_mask`/`send_state`/`matched_count`/`rate_pps`），设计稿中的所有动态元素（LED、状态灯、速率曲线、计数）都由该轮询驱动，不需要新的事件通道。
 2. **速率曲线缓冲在 UI 侧**：引擎只暴露当前 `rate_pps`；30 秒历史由 UI 每次轮询 push 进环形缓冲（约 150 点，200ms × 150 = 30s）。
-3. **过滤器锁定语义**：引擎运行中禁止改过滤器（WinDivert 句柄已按旧过滤器打开）；「停止」后解锁。预设 Select 运行中同样禁用。
+3. **过滤器只读语义（v1.2）**：输入框恒只读，表达式只来自 config.txt 预设回填（程序化 set_value 不受 readonly 影响）；自定义过滤走配置文件。预设 Select 运行中仍禁用（引擎运行中不可切换过滤器——WinDivert 句柄已按旧过滤器打开）。
 4. **文案全部走 `t!()`**：本设计出现的所有文字均已在 `locales/ui.yml` 中有对应 key（含 zh-CN/en），实现时禁止硬编码；新增 tooltip 文案（Throttle≠限速、Duplicate/OOD 适合 UDP）需补 yml key。
 5. **参数输入语义**：空/非法按 0、越界钳位回写——`Input` 的 `on_change` 里复用现有 `sync_int`/`sync_chance` 钳位逻辑。
 6. **主题**：GPUI Theme 注册 §4 两套 seed token；组件样式只引用 token，保证后续加高对比度等主题时零改动。

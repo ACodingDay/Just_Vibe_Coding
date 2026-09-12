@@ -11,8 +11,8 @@
 //! （见 .workbuddy/skills/gpui-component-ui/SKILL.md），因此可交互控件
 //! （如主题切换按钮）不得放在 TitleBar 内。
 
-use gpui::{div, svg, AnyElement, App, Context, FontWeight, IntoElement, ParentElement, Styled};
-use gpui_component::{h_flex, ActiveTheme as _, TitleBar};
+use gpui_kit::{div, svg, AnyElement, App, Context, FontWeight, IntoElement, ParentElement, Styled};
+use gpui_kit::component::{h_flex, ActiveTheme as _, TitleBar};
 use rust_i18n::t;
 
 use crate::ui::main_window::MainWindow;

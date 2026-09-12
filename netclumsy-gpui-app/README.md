@@ -10,7 +10,7 @@
 |------|------|
 | 🦀 开发语言 | **Rust** (single binary) |
 | 🎨 UI 框架 | **GPUI**（Zed 的 GPU 加速原生 UI 框架） |
-| 🧩 UI 组件 | **gpui-component**（60+ 跨平台组件） |
+| 🧩 UI 组件 | **gpui-kit**（60+ 跨平台组件，含 GPUI） |
 | 🔌 核心依赖 | **windivert** crate + 官方签名 WinDivert 驱动 |
 
 ## ✨ 主要功能

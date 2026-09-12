@@ -1,5 +1,5 @@
-use gpui::*;
-use gpui_component::{Root, TitleBar};
+use gpui_kit::*;
+use gpui_kit::component::{Root, TitleBar};
 use rust_i18n::t;
 use std::sync::Arc;
 
@@ -81,12 +81,12 @@ fn main() {
     // 加载 exe 同目录 config.txt 预设（缺失时回退原版式 loopback 预设）
     let presets = presets::load();
 
-    let app = gpui_platform::application().with_assets(Assets);
+    let app = gpui_kit::application().with_assets(Assets);
 
     app.run(move |cx| {
-        gpui_component::set_locale("zh-CN");
+        gpui_kit::component::set_locale("zh-CN");
         rust_i18n::set_locale("zh-CN");
-        gpui_component::init(cx);
+        gpui_kit::init(cx);
         // 注册深/浅两套 seed token 主题，默认深色（design/DESIGN.md §4）
         ui::theme::init(cx);
 

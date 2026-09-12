@@ -7,21 +7,23 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 
-use gpui::*;
-use gpui_component::button::{Button, ButtonVariants};
-use gpui_component::dialog::{DialogAction, DialogClose, DialogFooter};
-use gpui_component::input::{InputEvent, InputState};
-use gpui_component::select::{SearchableVec, SelectEvent, SelectState};
-use gpui_component::tab::{Tab, TabBar};
-use gpui_component::{h_flex, v_flex, ActiveTheme as _, Icon, IconName, IndexPath, Root, Sizable as _, WindowExt as _};
+use gpui_kit::*;
+use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::description_list::DescriptionList;
+use gpui_kit::component::dialog::{DialogAction, DialogClose, DialogFooter};
+use gpui_kit::component::input::{InputEvent, InputState};
+use gpui_kit::component::kbd::Kbd;
+use gpui_kit::component::link::Link;
+use gpui_kit::component::notification::Notification;
+use gpui_kit::component::select::{SearchableVec, SelectEvent, SelectState};
+use gpui_kit::component::tab::{Tab, TabBar};
+use gpui_kit::component::tag::Tag;
+use gpui_kit::component::{h_flex, v_flex, ActiveTheme as _, Icon, IconName, IndexPath, Root, Sizable as _, WindowExt as _};
 use rust_i18n::t;
 
 use crate::args::ParsedArgs;
 use crate::elevate::is_admin_for_ui;
-use crate::engine::{
-    Engine, EngineConfig, EngineMode, BIT_BANDWIDTH, BIT_DROP, BIT_DUPLICATE, BIT_LAG, BIT_OOD,
-    BIT_RESET, BIT_TAMPER, BIT_THROTTLE,
-};
+use crate::engine::{Engine, EngineConfig, EngineError, EngineMode};
 use crate::presets::Preset;
 use crate::ui::inputs::{self, EffectInputs};
 use crate::ui::stats_bar::RateHistory;
@@ -54,7 +56,6 @@ pub struct MainWindow {
     pub(crate) packet_rate: u32,
     pub(crate) send_state: u8,
     pub(crate) triggered_mask: u32,
-    pub(crate) status_text: SharedString,
     pub(crate) active_tab: usize,
     pub(crate) is_admin: bool,
     pub(crate) engine_failed: bool,
@@ -144,8 +145,10 @@ impl MainWindow {
         subscribe_input!(reset_chance_input, sync_chance, config.reset.chance.clone());
         subscribe_input!(bandwidth_limit_input, sync_int, config.bandwidth.limit.clone(), 0, 99999);
 
-        // 指示灯轮询：读取原子状态并刷新界面
-        cx.spawn(|view: WeakEntity<Self>, cx: &mut AsyncApp| {
+        // 指示灯轮询：读取原子状态并刷新界面；引擎异常退出时经窗口句柄
+        // 推送错误通知（此处异步上下文没有 &mut Window）
+        let window_handle = window.window_handle();
+        cx.spawn(move |view: WeakEntity<Self>, cx: &mut AsyncApp| {
             let cx = cx.clone();
             async move {
                 let mut cx = cx;
@@ -153,11 +156,23 @@ impl MainWindow {
                     cx.background_executor()
                         .timer(Duration::from_millis(POLL_INTERVAL_MS))
                         .await;
+                    let mut exit_message = None;
                     if view
-                        .update(&mut cx, |this, cx| this.poll_status(cx))
+                        .update(&mut cx, |this, cx| exit_message = this.poll_status(cx))
                         .is_err()
                     {
                         break;
+                    }
+                    if let Some(message) = exit_message {
+                        let _ = window_handle.update(&mut cx, |_, window, cx| {
+                            window.push_notification(
+                                Notification::error(message)
+                                    .title(t!("netclumsy.notify.engine_exited.title").into_owned())
+                                    .autohide(false)
+                                    .id::<EngineError>(),
+                                cx,
+                            );
+                        });
                     }
                 }
             }
@@ -202,7 +217,6 @@ impl MainWindow {
             packet_rate: 0,
             send_state: 0,
             triggered_mask: 0,
-            status_text: t!("netclumsy.status.idle").into_owned().into(),
             active_tab: 0,
             is_admin: is_admin_for_ui(),
             engine_failed: false,
@@ -293,33 +307,63 @@ impl MainWindow {
             } else {
                 EngineMode::Start
             };
-            this.start_engine(mode, cx);
+            this.start_engine(mode, window, cx);
         }
 
         this
     }
 
-    pub(crate) fn start_engine(&mut self, mode: EngineMode, cx: &mut Context<Self>) {
+    pub(crate) fn start_engine(
+        &mut self,
+        mode: EngineMode,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let filter = self.filter_input.read(cx).value().to_string();
         match Engine::new(&filter, mode, self.config.clone()) {
             Ok(engine) => {
                 self.engine = Some(engine);
                 self.engine_failed = false;
-                self.status_text = t!("netclumsy.status.started").into_owned().into();
                 self.matched_count = 0;
                 self.packet_rate = 0;
                 self.send_state = 0;
                 self.triggered_mask = 0;
                 self.rate_history = RateHistory::new();
+                // 成功启动即清除上一条引擎错误通知（用户未手动关时）
+                window.remove_notification::<EngineError>(cx);
             }
             Err(e) => {
                 self.engine_failed = true;
-                self.status_text = t!(
+                // 错误详情走通知（原先是状态栏文字，底部栏精简后迁移到这里）。
+                // defer 到下一帧：new() 的 --filter 自动启动路径此时 Root 尚未挂载，
+                // push_notification 内部 Root::update 会 panic（同 admin 对话框）。
+                let message = t!(
                     "netclumsy.status.start_failed.format",
                     error = e.to_string()
                 )
-                .into_owned()
-                .into();
+                .into_owned();
+                let note = Notification::error(message)
+                    .title(t!("netclumsy.notify.start_failed.title").into_owned())
+                    // 错误通知常驻直至处理，不被自动隐藏淹没；重复失败
+                    // 按 EngineError 替换同一条，不堆叠
+                    .autohide(false)
+                    .id::<EngineError>();
+                // 设备打开失败最常见原因是未提权：点击通知直接提权重启
+                let note = if matches!(e, EngineError::Device { .. }) {
+                    note.on_click(|_, window, cx| {
+                        if crate::elevate::elevate_self() {
+                            cx.quit();
+                        } else {
+                            let text = t!("netclumsy.notify.elevate_failed").into_owned();
+                            window.push_notification(Notification::warning(text), cx);
+                        }
+                    })
+                } else {
+                    note
+                };
+                cx.defer_in(window, move |_, window, cx| {
+                    window.push_notification(note, cx);
+                });
             }
         }
         cx.notify();
@@ -333,17 +377,17 @@ impl MainWindow {
         // 原子里留着最后一个非 0 速率，下一次轮询会把它读回界面（速率条永久卡住）。
         self.config.rate_pps.store(0, Ordering::Relaxed);
         self.engine_failed = false;
-        self.status_text = t!("netclumsy.status.stopped").into_owned().into();
         self.packet_rate = 0;
         self.send_state = 0;
         self.triggered_mask = 0;
         cx.notify();
     }
 
-    fn poll_status(&mut self, cx: &mut Context<Self>) {
+    /// 轮询引擎读数并刷新界面；引擎异常退出时返回错误文案（由调用方推通知）
+    fn poll_status(&mut self, cx: &mut Context<Self>) -> Option<SharedString> {
         // 修复：引擎线程自行退出（recv 连续错误放弃后自动收尾）时，原先只闪一次红色
         // 发送灯，界面仍停留在「运行中」。检测到 clock 线程收尾完成就接管：join 已退出
-        // 的线程、清零读数，状态行升级为与 start_failed 同级的错误提示。
+        // 的线程、清零读数，并弹出与 start_failed 同级的错误通知。
         // 用户主动停止时引擎已被 take 走，这里天然跳过。
         if self.engine.is_some() && self.config.engine_exited.load(Ordering::Relaxed) {
             if let Some(mut engine) = self.engine.take() {
@@ -351,12 +395,11 @@ impl MainWindow {
             }
             self.config.rate_pps.store(0, Ordering::Relaxed);
             self.engine_failed = true;
-            self.status_text = t!("netclumsy.status.engine_exited").into_owned().into();
             self.packet_rate = 0;
             self.send_state = 0;
             self.triggered_mask = 0;
             cx.notify();
-            return;
+            return Some(t!("netclumsy.status.engine_exited").into_owned().into());
         }
         let matched_count = self.config.matched_count.load(Ordering::Relaxed);
         let packet_rate = self.config.rate_pps.load(Ordering::Relaxed);
@@ -382,45 +425,84 @@ impl MainWindow {
         if changed {
             cx.notify();
         }
+        None
     }
 
-    /// 劣化页：FilterBar + 效果列表（高度不足时内部滚动）
+    /// 劣化页：FilterBar + 效果列表（高度不足时仅列表区内部滚动，其余区块固定）
     fn render_degrade_page(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
-        let mask = self.triggered_mask;
+        let inputs = EffectInputs {
+            lag_time: &self.lag_time_input,
+            drop_chance: &self.drop_chance_input,
+            throttle_chance: &self.throttle_chance_input,
+            throttle_frame: &self.throttle_frame_input,
+            duplicate_count: &self.duplicate_count_input,
+            duplicate_chance: &self.duplicate_chance_input,
+            ood_chance: &self.ood_chance_input,
+            tamper_chance: &self.tamper_chance_input,
+            reset_chance: &self.reset_chance_input,
+            bandwidth_limit: &self.bandwidth_limit_input,
+        };
+        let triggered_mask = self.triggered_mask;
         v_flex()
             .flex_1()
             .overflow_hidden()
             .child(filter_bar::render(self, cx))
             .child(
+                // 效果列表滚动容器：标题栏/页签/过滤区/统计栏固定，仅列表滚动。
+                // min_h(rems(0.)) 解除 flex 子项的 min-height:auto——否则行数变多时
+                // 内容高度会把容器撑开、overflow_y_scroll 永不触发（flex 经典坑）。
                 div()
                     .id("effect-list-scroll")
                     .flex_1()
+                    .min_h(rems(0.))
                     .overflow_y_scroll()
-                    .child(
-                        v_flex()
-                            .child(effect_panel::lag_row(&self.config, &self.lag_time_input, mask & BIT_LAG != 0, cx))
-                            .child(effect_panel::drop_row(&self.config, &self.drop_chance_input, mask & BIT_DROP != 0, cx))
-                            .child(effect_panel::throttle_row(&self.config, &self.throttle_frame_input, &self.throttle_chance_input, mask & BIT_THROTTLE != 0, cx))
-                            .child(effect_panel::duplicate_row(&self.config, &self.duplicate_count_input, &self.duplicate_chance_input, mask & BIT_DUPLICATE != 0, cx))
-                            .child(effect_panel::ood_row(&self.config, &self.ood_chance_input, mask & BIT_OOD != 0, cx))
-                            .child(effect_panel::tamper_row(&self.config, &self.tamper_chance_input, mask & BIT_TAMPER != 0, cx))
-                            .child(effect_panel::reset_row(&self.config, &self.reset_chance_input, mask & BIT_RESET != 0, cx))
-                            .child(effect_panel::bandwidth_row(&self.config, &self.bandwidth_limit_input, mask & BIT_BANDWIDTH != 0, cx)),
-                    ),
+                    .child(effect_panel::render_effect_list(
+                        &self.config,
+                        &inputs,
+                        triggered_mask,
+                        cx,
+                    )),
             )
+            // 统计栏：只在劣化页展示——状态/速率/计数仅在过滤时有意义，
+            // 关于页不需要（此前挂在根渲染导致全局共享，关于页空占一块）
+            .child(stats_bar::render(self, cx))
     }
 
+    /// 关于页：标题区（应用名 + 版本）+ 快捷键 + 项目信息
     fn render_about_page(&self, cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
-            .px_4()
             .flex_1()
             .items_center()
             .justify_center()
-            .gap_2()
+            .gap_8()
+            .px_4()
+            .py_8()
+            .child(self.render_about_header(cx))
+            .child(shortcut_group(cx))
+            .child(project_list())
+    }
+
+    /// 标题区：应用名 + 版本章（Tag）+ 一句话描述
+    fn render_about_header(&self, cx: &Context<Self>) -> AnyElement {
+        v_flex()
+            .items_center()
+            .gap_1()
             .child(
-                div()
-                    .text_lg()
-                    .child(t!("netclumsy.about.app_name").into_owned()),
+                h_flex()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        div()
+                            .text_lg()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .child(t!("netclumsy.about.app_name").into_owned()),
+                    )
+                    .child(
+                        Tag::secondary().small().child(SharedString::from(format!(
+                            "v{}",
+                            env!("CARGO_PKG_VERSION")
+                        ))),
+                    ),
             )
             .child(
                 div()
@@ -428,7 +510,69 @@ impl MainWindow {
                     .text_color(cx.theme().muted_foreground)
                     .child(t!("netclumsy.about.description").into_owned()),
             )
+            .into_any_element()
     }
+}
+
+/// 关于页快捷键区：展示行标签 + Kbd 按键章。
+/// 按键串必须与 main.rs bind_keys 的注册一致（改绑定要同步这里）。
+fn shortcut_group(cx: &Context<MainWindow>) -> AnyElement {
+    let rows = [
+        (t!("netclumsy.window.start").into_owned(), "f5"),
+        (t!("netclumsy.window.capture").into_owned(), "f6"),
+        (t!("netclumsy.window.stop").into_owned(), "shift-f5"),
+    ];
+    v_flex()
+        .w(rems(20.))
+        .gap_1p5()
+        .child(
+            div()
+                .text_xs()
+                .text_color(cx.theme().muted_foreground)
+                .child(t!("netclumsy.about.shortcuts").into_owned()),
+        )
+        .children(rows.into_iter().map(|(label, keys)| {
+            h_flex()
+                .items_center()
+                .justify_between()
+                .child(div().text_sm().child(label))
+                .child(Kbd::new(Keystroke::parse(keys).expect("内置快捷键串必须可解析")))
+        }))
+        .into_any_element()
+}
+
+/// 关于页项目信息区：上游项目 / 网络驱动 / UI 框架（DescriptionList + Link）
+fn project_list() -> AnyElement {
+    DescriptionList::new()
+        .label_width(rems(6.5))
+        .item(
+            t!("netclumsy.about.upstream").into_owned(),
+            Link::new("link-clumsy")
+                .href("https://github.com/jagt/clumsy")
+                .text_sm()
+                .child("clumsy (MIT)")
+                .into_any_element(),
+            1,
+        )
+        .item(
+            t!("netclumsy.about.driver").into_owned(),
+            Link::new("link-windivert")
+                .href("https://reqrypt.org/windivert.html")
+                .text_sm()
+                .child("WinDivert")
+                .into_any_element(),
+            1,
+        )
+        .item(
+            t!("netclumsy.about.framework").into_owned(),
+            Link::new("link-gpui-kit")
+                .href("https://github.com/longbridge/gpui-kit")
+                .text_sm()
+                .child("gpui-kit")
+                .into_any_element(),
+            1,
+        )
+        .into_any_element()
 }
 
 impl Drop for MainWindow {
@@ -452,9 +596,9 @@ impl Render for MainWindow {
             .size_full()
             .bg(cx.theme().background)
             // 键盘路径：动作处理挂在根容器，按键从焦点元素冒泡上来
-            .on_action(cx.listener(|this, _: &StartFilter, _, cx| {
+            .on_action(cx.listener(|this, _: &StartFilter, window, cx| {
                 if this.engine.is_none() {
-                    this.start_engine(EngineMode::Start, cx);
+                    this.start_engine(EngineMode::Start, window, cx);
                 }
             }))
             .on_action(cx.listener(|this, _: &StopFilter, _, cx| {
@@ -462,9 +606,9 @@ impl Render for MainWindow {
                     this.stop_engine(cx);
                 }
             }))
-            .on_action(cx.listener(|this, _: &CaptureFilter, _, cx| {
+            .on_action(cx.listener(|this, _: &CaptureFilter, window, cx| {
                 if this.engine.is_none() {
-                    this.start_engine(EngineMode::Capture, cx);
+                    this.start_engine(EngineMode::Capture, window, cx);
                 }
             }))
             // ① 自定义标题栏（品牌区 + 窗口控制）
@@ -506,14 +650,12 @@ impl Render for MainWindow {
                             })),
                     ),
             )
-            // ③ 页面内容（按 active_tab 分发）
+            // ③ 页面内容（按 active_tab 分发；统计栏属于劣化页，见 render_degrade_page）
             .child(match self.active_tab {
                 0 => self.render_degrade_page(cx).into_any_element(),
                 _ => self.render_about_page(cx).into_any_element(),
             })
-            // ④ 统计栏（所有页面共享）
-            .child(stats_bar::render(self, cx))
-            // ⑤ 模态层（Dialog / Sheet / Notification），必须挂在内容之上
+            // ④ 模态层（Dialog / Sheet / Notification），必须挂在内容之上
             .children(sheet_layer)
             .children(dialog_layer)
             .children(notification_layer)

@@ -14,12 +14,33 @@ netclumsy:
   tab.about:
     zh-CN: 关于
     en: About
+  notify.start_failed.title:
+    zh-CN: 启动失败
+    en: Start failed
+  notify.engine_exited.title:
+    zh-CN: 引擎异常停止
+    en: Engine stopped unexpectedly
+  notify.elevate_failed:
+    zh-CN: "提权失败：需要管理员权限才能加载 WinDivert 驱动（UAC 被取消或 ShellExecute 失败）。"
+    en: "elevation failed: Administrator rights are required to load the WinDivert driver (UAC cancelled or ShellExecute failed)."
   about.app_name:
     zh-CN: NetClumsy
     en: NetClumsy
   about.description:
     zh-CN: 网络包劣化工具 · 基于 clumsy 重写
     en: Network packet degradation tool · rewritten from clumsy
+  about.shortcuts:
+    zh-CN: 快捷键
+    en: Shortcuts
+  about.upstream:
+    zh-CN: 上游项目
+    en: Upstream
+  about.driver:
+    zh-CN: 网络驱动
+    en: Driver
+  about.framework:
+    zh-CN: UI 框架
+    en: UI framework
   window.capture:
     zh-CN: 捕获
     en: Capture
@@ -47,9 +68,6 @@ netclumsy:
   window.filter.placeholder:
     zh-CN: 输入过滤表达式，如 tcp and tcp.DstPort == 8012
     en: e.g. tcp and tcp.DstPort == 8012
-  window.send.label:
-    zh-CN: 发送
-    en: Send
   send.ok:
     zh-CN: 发送正常
     en: Sending normally
@@ -59,9 +77,6 @@ netclumsy:
   send.idle:
     zh-CN: 引擎未运行
     en: Engine not running
-  window.control.note:
-    zh-CN: 停止后可修改过滤条件并重新开始
-    en: Edit filter after stopping to restart
   window.admin.badge:
     zh-CN: 管理员权限
     en: Admin Privileges
@@ -80,15 +95,12 @@ netclumsy:
   window.admin.failed:
     zh-CN: 引擎启动失败
     en: Engine Failed
-  window.filter.locked:
-    zh-CN: 引擎运行中
-    en: Engine Running
+  window.filter.readonly:
+    zh-CN: 只读 · 来自 config.txt
+    en: Read-only · from config.txt
   window.theme.toggle:
     zh-CN: 切换深浅主题
     en: Toggle dark/light theme
-  stats.window_hint:
-    zh-CN: 近 30 秒
-    en: Last 30s
   stats.rate.label:
     zh-CN: 包速率
     en: Packet Rate
@@ -179,21 +191,6 @@ netclumsy:
   effect.reset.now:
     zh-CN: RST 下一包
     en: RST Next Packet
-  status.requires_admin:
-    zh-CN: 需要管理员权限
-    en: Requires Administrator
-  status.idle:
-    zh-CN: 就绪。输入过滤条件后点击「启动」或先「捕获」验证匹配。
-    en: Ready. Enter filter criteria and click Start, or Capture to verify matching.
-  status.running:
-    zh-CN: 运行中
-    en: Running
-  status.started:
-    zh-CN: 已启动过滤，启用效果后实时生效。
-    en: Started filtering. Enable effects to take effect.
-  status.stopped:
-    zh-CN: 已停止。修改过滤条件后可重新开始。
-    en: Stopped. Edit criteria and start again.
   status.engine_exited:
     zh-CN: 引擎已异常停止：收包连续出错，已自动收尾并回注缓冲的数据包。
     en: "Engine stopped unexpectedly: packet reception failed repeatedly; shutdown ran and buffered packets were flushed back."

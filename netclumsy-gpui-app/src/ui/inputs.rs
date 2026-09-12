@@ -5,8 +5,8 @@
 
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use gpui::{App, AppContext as _, Entity, Window};
-use gpui_component::input::InputState;
+use gpui_kit::{App, AppContext as _, Entity, Window};
+use gpui_kit::component::input::InputState;
 
 use crate::args::ParsedArgs;
 use crate::engine::EngineConfig;

@@ -7,29 +7,169 @@
 //! 行高 3.25rem（= 52px @16px 基准字号），行间 1px 分隔线，hover 背景
 //! fg 4%，禁用行控件区降透明度。
 //! 尺寸一律走 rem helper / 官方字号体系，px 仅保留 1px hairline。
+//!
+//! 按职责分四层：
+//! 1. `EFFECTS` spec 表 —— 每个效果一条声明（id / 引擎触发布 / 名称 / 配置段 /
+//!    参数区构建函数）。新增效果 = 表里加一个条目 + 写一个 `*_controls` 构建函数，
+//!    行渲染逻辑零改动。
+//! 2. `render_effect_list` —— 遍历 spec 表组装全部行（方向列 + 参数区 + 开关回调）。
+//!    滚动容器不在这里：页面层（main_window::render_degrade_page）负责固定
+//!    过滤区/统计栏、仅列表区滚动。
+//! 3. 行骨架 `effect_row` 与状态灯 `status_dot*`。
+//! 4. 控件 helper（param_field / direction_pair / toggle_handler 等）。
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use gpui::{
+use gpui_kit::{
     div, rems, AnyElement, App, Context, ElementId, Entity, FontWeight, Hsla,
     InteractiveElement, IntoElement, ParentElement, SharedString, StatefulInteractiveElement,
     Styled, Window,
 };
-use gpui::prelude::FluentBuilder as _;
-use gpui_component::button::Button;
-use gpui_component::checkbox::Checkbox;
-use gpui_component::input::{Input, InputState};
-use gpui_component::switch::Switch;
-use gpui_component::tooltip::Tooltip;
-use gpui_component::{h_flex, v_flex, ActiveTheme as _, Disableable, Sizable as _};
+use gpui_kit::prelude::FluentBuilder as _;
+use gpui_kit::component::button::Button;
+use gpui_kit::component::checkbox::Checkbox;
+use gpui_kit::component::input::{Input, InputState};
+use gpui_kit::component::switch::Switch;
+use gpui_kit::component::tooltip::Tooltip;
+use gpui_kit::component::{h_flex, v_flex, ActiveTheme as _, Disableable, Sizable as _};
 use rust_i18n::t;
 
-use crate::engine::{BaseParams, EngineConfig};
+use crate::engine::{
+    BaseParams, EngineConfig, BIT_BANDWIDTH, BIT_DROP, BIT_DUPLICATE, BIT_LAG, BIT_OOD,
+    BIT_RESET, BIT_TAMPER, BIT_THROTTLE,
+};
+use crate::ui::inputs::EffectInputs;
 use crate::ui::main_window::MainWindow;
 
 /// 禁用行（Switch off）控件区不透明度（设计稿 .is-off 40-55%）
 const DISABLED_OPACITY: f32 = 0.45;
+
+// ---------------------------------------------------------------------------
+// 1. 效果声明表：新增效果只动这里 + 对应的 *_controls 构建函数
+// ---------------------------------------------------------------------------
+
+/// 各效果参数区构建函数的统一签名。
+///
+/// 生命周期全部独立量化（gpui 的 `Context<'e, _>` 内部生命周期不变，
+/// 若与 cfg/inputs 绑在同一生命周期上，借用会横跨整个调用点无法结束）。
+/// cfg / inputs 是只读借用，cx 的两层生命周期按调用点统一，各效果
+/// 构建函数照常写省略形式即可。
+type ControlsFn = for<'a, 'b, 'c, 'd, 'e> fn(
+    &'a EngineConfig,
+    &'b EffectInputs<'c>,
+    bool,
+    &'d mut Context<'e, MainWindow>,
+) -> Vec<AnyElement>;
+
+/// 效果声明条目。顺序 = 引擎处理顺序（与 C 原版一致）。
+struct EffectSpec {
+    /// 元素 id 前缀（LED / Switch / 方向复选框均由它派生）
+    id: &'static str,
+    /// 引擎 triggered_mask 对应的触发布
+    bit: u32,
+    /// 效果名（i18n key 本身即英文名，语言切换直接生效）
+    title: fn() -> SharedString,
+    /// 该效果的 BaseParams 配置段（enabled / inbound / outbound）
+    base: for<'a> fn(&'a EngineConfig) -> &'a BaseParams,
+    /// 右端参数区（附加选项在前，参数组右对齐收口）
+    controls: ControlsFn,
+}
+
+const EFFECTS: [EffectSpec; 8] = [
+    EffectSpec {
+        id: "lag",
+        bit: BIT_LAG,
+        title: || t!("netclumsy.effect.lag").into_owned().into(),
+        base: |cfg| &cfg.lag.base,
+        controls: lag_controls,
+    },
+    EffectSpec {
+        id: "drop",
+        bit: BIT_DROP,
+        title: || t!("netclumsy.effect.drop").into_owned().into(),
+        base: |cfg| &cfg.drop.base,
+        controls: drop_controls,
+    },
+    EffectSpec {
+        id: "throttle",
+        bit: BIT_THROTTLE,
+        title: || t!("netclumsy.effect.throttle").into_owned().into(),
+        base: |cfg| &cfg.throttle.base,
+        controls: throttle_controls,
+    },
+    EffectSpec {
+        id: "duplicate",
+        bit: BIT_DUPLICATE,
+        title: || t!("netclumsy.effect.duplicate").into_owned().into(),
+        base: |cfg| &cfg.duplicate.base,
+        controls: duplicate_controls,
+    },
+    EffectSpec {
+        id: "ood",
+        bit: BIT_OOD,
+        title: || t!("netclumsy.effect.ood").into_owned().into(),
+        base: |cfg| &cfg.ood.base,
+        controls: ood_controls,
+    },
+    EffectSpec {
+        id: "tamper",
+        bit: BIT_TAMPER,
+        title: || t!("netclumsy.effect.tamper").into_owned().into(),
+        base: |cfg| &cfg.tamper.base,
+        controls: tamper_controls,
+    },
+    EffectSpec {
+        id: "reset",
+        bit: BIT_RESET,
+        title: || t!("netclumsy.effect.reset").into_owned().into(),
+        base: |cfg| &cfg.reset.base,
+        controls: reset_controls,
+    },
+    EffectSpec {
+        id: "bandwidth",
+        bit: BIT_BANDWIDTH,
+        title: || t!("netclumsy.effect.bandwidth").into_owned().into(),
+        base: |cfg| &cfg.bandwidth.base,
+        controls: bandwidth_controls,
+    },
+];
+
+// ---------------------------------------------------------------------------
+// 2. 列表组装入口：遍历 spec 表，行渲染逻辑对新增效果零感知
+// ---------------------------------------------------------------------------
+
+/// 全部效果行（顺序 = EFFECTS 表声明顺序）。滚动容器由页面层负责。
+pub fn render_effect_list(
+    cfg: &EngineConfig,
+    inputs: &EffectInputs<'_>,
+    triggered_mask: u32,
+    cx: &mut Context<MainWindow>,
+) -> AnyElement {
+    v_flex()
+        .children(EFFECTS.iter().map(|spec| {
+            let base = (spec.base)(cfg);
+            let enabled = base.enabled.load(Ordering::Relaxed);
+            let directions = direction_pair(spec.id, base, enabled, cx);
+            let controls = (spec.controls)(cfg, inputs, enabled, cx);
+            let on_toggle = toggle_handler(base.enabled.clone(), cx);
+            effect_row(
+                spec.id,
+                (spec.title)(),
+                triggered_mask & spec.bit != 0,
+                enabled,
+                directions,
+                controls,
+                on_toggle,
+                cx,
+            )
+        }))
+        .into_any_element()
+}
+
+// ---------------------------------------------------------------------------
+// 3. 行骨架与状态灯
+// ---------------------------------------------------------------------------
 
 /// 效果行骨架：LED + Switch + 单行居中名称 + 方向列 + 右端参数区
 fn effect_row(
@@ -137,6 +277,10 @@ pub fn status_dot_color(
         .into_any_element()
 }
 
+// ---------------------------------------------------------------------------
+// 4. 控件 helper：方向列 / 参数输入 / 开关回调
+// ---------------------------------------------------------------------------
+
 /// 参数小标签（12px muted）
 fn param_label(text: impl Into<SharedString>, cx: &App) -> AnyElement {
     div()
@@ -146,9 +290,28 @@ fn param_label(text: impl Into<SharedString>, cx: &App) -> AnyElement {
         .into_any_element()
 }
 
+/// 参数输入框（64px 等宽数字输入）
+fn param_input(state: &Entity<InputState>, enabled: bool) -> AnyElement {
+    Input::new(state)
+        .w_16()
+        .small()
+        .disabled(!enabled)
+        .into_any_element()
+}
+
+/// 「标签 + 输入框」参数对（右端参数区的基本单元，标签紧贴自己的输入框）
+fn param_field(
+    label: impl Into<SharedString>,
+    state: &Entity<InputState>,
+    enabled: bool,
+    cx: &App,
+) -> Vec<AnyElement> {
+    vec![param_label(label, cx), param_input(state, enabled)]
+}
+
 /// 方向复选框（inbound / outbound 共用构建逻辑）
 fn direction_checkbox(
-    id: &'static str,
+    id: ElementId,
     label: impl Into<SharedString>,
     base: &BaseParams,
     is_inbound: bool,
@@ -172,6 +335,32 @@ fn direction_checkbox(
         .into_any_element()
 }
 
+fn direction_pair(
+    id: &'static str,
+    base: &BaseParams,
+    enabled: bool,
+    cx: &mut Context<MainWindow>,
+) -> [AnyElement; 2] {
+    [
+        direction_checkbox(
+            ElementId::Name(format!("{id}-in").into()),
+            t!("netclumsy.window.direction.inbound").into_owned(),
+            base,
+            true,
+            !enabled,
+            cx,
+        ),
+        direction_checkbox(
+            ElementId::Name(format!("{id}-out").into()),
+            t!("netclumsy.window.direction.outbound").into_owned(),
+            base,
+            false,
+            !enabled,
+            cx,
+        ),
+    ]
+}
+
 /// 效果开关回调：写 enabled 原子并刷新
 fn toggle_handler(
     enabled: Arc<AtomicBool>,
@@ -183,229 +372,157 @@ fn toggle_handler(
     })
 }
 
-/// 参数输入框（64px 等宽数字输入）
-fn param_input(state: &Entity<InputState>, enabled: bool) -> AnyElement {
-    Input::new(state)
-        .w_16()
-        .small()
-        .disabled(!enabled)
-        .into_any_element()
-}
+// ---------------------------------------------------------------------------
+// 5. 各效果参数区构建函数（对应 EFFECTS 表的 controls 字段）
+// ---------------------------------------------------------------------------
 
-fn direction_pair(
-    in_id: &'static str,
-    out_id: &'static str,
-    base: &BaseParams,
+fn lag_controls(
+    _cfg: &EngineConfig,
+    inputs: &EffectInputs<'_>,
     enabled: bool,
-    cx: &mut Context<MainWindow>,
-) -> [AnyElement; 2] {
-    [
-        direction_checkbox(
-            in_id,
-            t!("netclumsy.window.direction.inbound").into_owned(),
-            base,
-            true,
-            !enabled,
-            cx,
-        ),
-        direction_checkbox(
-            out_id,
-            t!("netclumsy.window.direction.outbound").into_owned(),
-            base,
-            false,
-            !enabled,
-            cx,
-        ),
-    ]
+    cx: &mut Context<'_, MainWindow>,
+) -> Vec<AnyElement> {
+    param_field(t!("netclumsy.effect.lag.delay").into_owned(), inputs.lag_time, enabled, cx)
 }
 
-// ---- 8 个效果行（顺序与 C 原版一致：lag → drop → throttle → dup → ood → tamper → reset → bandwidth）----
-
-pub fn lag_row(cfg: &EngineConfig, input: &Entity<InputState>, triggered: bool, cx: &mut Context<MainWindow>) -> AnyElement {
-    let enabled = cfg.lag.base.enabled.load(Ordering::Relaxed);
-    effect_row(
-        "effect-lag",
-        t!("netclumsy.effect.lag").into_owned().into(),
-        triggered,
-        enabled,
-        direction_pair("lag-in", "lag-out", &cfg.lag.base, enabled, cx),
-        vec![
-            param_label(t!("netclumsy.effect.lag.delay").into_owned(), cx),
-            param_input(input, enabled),
-        ],
-        toggle_handler(cfg.lag.base.enabled.clone(), cx),
-        cx,
-    )
+fn drop_controls(
+    _cfg: &EngineConfig,
+    inputs: &EffectInputs<'_>,
+    enabled: bool,
+    cx: &mut Context<'_, MainWindow>,
+) -> Vec<AnyElement> {
+    param_field(t!("netclumsy.effect.drop.chance").into_owned(), inputs.drop_chance, enabled, cx)
 }
 
-pub fn drop_row(cfg: &EngineConfig, input: &Entity<InputState>, triggered: bool, cx: &mut Context<MainWindow>) -> AnyElement {
-    let enabled = cfg.drop.base.enabled.load(Ordering::Relaxed);
-    effect_row(
-        "effect-drop",
-        t!("netclumsy.effect.drop").into_owned().into(),
-        triggered,
-        enabled,
-        direction_pair("drop-in", "drop-out", &cfg.drop.base, enabled, cx),
-        vec![
-            param_label(t!("netclumsy.effect.drop.chance").into_owned(), cx),
-            param_input(input, enabled),
-        ],
-        toggle_handler(cfg.drop.base.enabled.clone(), cx),
-        cx,
-    )
-}
-
-pub fn throttle_row(
+fn throttle_controls(
     cfg: &EngineConfig,
-    frame_input: &Entity<InputState>,
-    chance_input: &Entity<InputState>,
-    triggered: bool,
-    cx: &mut Context<MainWindow>,
-) -> AnyElement {
-    let enabled = cfg.throttle.base.enabled.load(Ordering::Relaxed);
+    inputs: &EffectInputs<'_>,
+    enabled: bool,
+    cx: &mut Context<'_, MainWindow>,
+) -> Vec<AnyElement> {
     let drop_throttled = cfg.throttle.drop_throttled.clone();
-    effect_row(
-        "effect-throttle",
-        t!("netclumsy.effect.throttle").into_owned().into(),
-        triggered,
+    let mut controls = vec![
+        Checkbox::new("throttle-drop")
+            .label(t!("netclumsy.effect.throttle.drop_throttled").into_owned())
+            .checked(cfg.throttle.drop_throttled.load(Ordering::Relaxed))
+            .disabled(!enabled)
+            .on_click(cx.listener(move |_, checked, _, cx| {
+                drop_throttled.store(*checked, Ordering::Relaxed);
+                cx.notify();
+            }))
+            .into_any_element(),
+    ];
+    controls.extend(param_field(
+        t!("netclumsy.effect.throttle.timeframe").into_owned(),
+        inputs.throttle_frame,
         enabled,
-        direction_pair("throttle-in", "throttle-out", &cfg.throttle.base, enabled, cx),
-        vec![
-            Checkbox::new("throttle-drop")
-                .label(t!("netclumsy.effect.throttle.drop_throttled").into_owned())
-                .checked(cfg.throttle.drop_throttled.load(Ordering::Relaxed))
-                .disabled(!enabled)
-                .on_click(cx.listener(move |_, checked, _, cx| {
-                    drop_throttled.store(*checked, Ordering::Relaxed);
-                    cx.notify();
-                }))
-                .into_any_element(),
-            param_label(t!("netclumsy.effect.throttle.timeframe").into_owned(), cx),
-            param_input(frame_input, enabled),
-            param_label(t!("netclumsy.effect.throttle.chance").into_owned(), cx),
-            param_input(chance_input, enabled),
-        ],
-        toggle_handler(cfg.throttle.base.enabled.clone(), cx),
         cx,
-    )
+    ));
+    controls.extend(param_field(
+        t!("netclumsy.effect.throttle.chance").into_owned(),
+        inputs.throttle_chance,
+        enabled,
+        cx,
+    ));
+    controls
 }
 
-pub fn duplicate_row(
+fn duplicate_controls(
+    _cfg: &EngineConfig,
+    inputs: &EffectInputs<'_>,
+    enabled: bool,
+    cx: &mut Context<'_, MainWindow>,
+) -> Vec<AnyElement> {
+    let mut controls = param_field(
+        t!("netclumsy.effect.duplicate.count").into_owned(),
+        inputs.duplicate_count,
+        enabled,
+        cx,
+    );
+    controls.extend(param_field(
+        t!("netclumsy.effect.duplicate.chance").into_owned(),
+        inputs.duplicate_chance,
+        enabled,
+        cx,
+    ));
+    controls
+}
+
+fn ood_controls(
+    _cfg: &EngineConfig,
+    inputs: &EffectInputs<'_>,
+    enabled: bool,
+    cx: &mut Context<'_, MainWindow>,
+) -> Vec<AnyElement> {
+    param_field(t!("netclumsy.effect.ood.chance").into_owned(), inputs.ood_chance, enabled, cx)
+}
+
+fn tamper_controls(
     cfg: &EngineConfig,
-    count_input: &Entity<InputState>,
-    chance_input: &Entity<InputState>,
-    triggered: bool,
-    cx: &mut Context<MainWindow>,
-) -> AnyElement {
-    let enabled = cfg.duplicate.base.enabled.load(Ordering::Relaxed);
-    effect_row(
-        "effect-duplicate",
-        t!("netclumsy.effect.duplicate").into_owned().into(),
-        triggered,
-        enabled,
-        direction_pair("dup-in", "dup-out", &cfg.duplicate.base, enabled, cx),
-        vec![
-            param_label(t!("netclumsy.effect.duplicate.count").into_owned(), cx),
-            param_input(count_input, enabled),
-            param_label(t!("netclumsy.effect.duplicate.chance").into_owned(), cx),
-            param_input(chance_input, enabled),
-        ],
-        toggle_handler(cfg.duplicate.base.enabled.clone(), cx),
-        cx,
-    )
-}
-
-pub fn ood_row(cfg: &EngineConfig, input: &Entity<InputState>, triggered: bool, cx: &mut Context<MainWindow>) -> AnyElement {
-    let enabled = cfg.ood.base.enabled.load(Ordering::Relaxed);
-    effect_row(
-        "effect-ood",
-        t!("netclumsy.effect.ood").into_owned().into(),
-        triggered,
-        enabled,
-        direction_pair("ood-in", "ood-out", &cfg.ood.base, enabled, cx),
-        vec![
-            param_label(t!("netclumsy.effect.ood.chance").into_owned(), cx),
-            param_input(input, enabled),
-        ],
-        toggle_handler(cfg.ood.base.enabled.clone(), cx),
-        cx,
-    )
-}
-
-pub fn tamper_row(cfg: &EngineConfig, input: &Entity<InputState>, triggered: bool, cx: &mut Context<MainWindow>) -> AnyElement {
-    let enabled = cfg.tamper.base.enabled.load(Ordering::Relaxed);
+    inputs: &EffectInputs<'_>,
+    enabled: bool,
+    cx: &mut Context<'_, MainWindow>,
+) -> Vec<AnyElement> {
     let redo_checksum = cfg.tamper.redo_checksum.clone();
-    effect_row(
-        "effect-tamper",
-        t!("netclumsy.effect.tamper").into_owned().into(),
-        triggered,
+    let mut controls = vec![
+        Checkbox::new("tamper-checksum")
+            .label(t!("netclumsy.effect.tamper.redo_checksum").into_owned())
+            .checked(cfg.tamper.redo_checksum.load(Ordering::Relaxed))
+            .disabled(!enabled)
+            .on_click(cx.listener(move |_, checked, _, cx| {
+                redo_checksum.store(*checked, Ordering::Relaxed);
+                cx.notify();
+            }))
+            .into_any_element(),
+    ];
+    controls.extend(param_field(
+        t!("netclumsy.effect.tamper.chance").into_owned(),
+        inputs.tamper_chance,
         enabled,
-        direction_pair("tamper-in", "tamper-out", &cfg.tamper.base, enabled, cx),
-        vec![
-            Checkbox::new("tamper-checksum")
-                .label(t!("netclumsy.effect.tamper.redo_checksum").into_owned())
-                .checked(cfg.tamper.redo_checksum.load(Ordering::Relaxed))
-                .disabled(!enabled)
-                .on_click(cx.listener(move |_, checked, _, cx| {
-                    redo_checksum.store(*checked, Ordering::Relaxed);
-                    cx.notify();
-                }))
-                .into_any_element(),
-            param_label(t!("netclumsy.effect.tamper.chance").into_owned(), cx),
-            param_input(input, enabled),
-        ],
-        toggle_handler(cfg.tamper.base.enabled.clone(), cx),
         cx,
-    )
+    ));
+    controls
 }
 
-pub fn reset_row(cfg: &EngineConfig, input: &Entity<InputState>, triggered: bool, cx: &mut Context<MainWindow>) -> AnyElement {
-    let enabled = cfg.reset.base.enabled.load(Ordering::Relaxed);
+fn reset_controls(
+    cfg: &EngineConfig,
+    inputs: &EffectInputs<'_>,
+    enabled: bool,
+    cx: &mut Context<'_, MainWindow>,
+) -> Vec<AnyElement> {
     let cfg_clone = cfg.reset.set_next_count.clone();
     let enabled_flag = cfg.reset.base.enabled.clone();
-    effect_row(
-        "effect-reset",
-        t!("netclumsy.effect.reset").into_owned().into(),
-        triggered,
+    let mut controls = vec![
+        Button::new("reset-next")
+            .label(t!("netclumsy.effect.reset.now").into_owned())
+            .small()
+            .disabled(!enabled)
+            .on_click(cx.listener(move |_, _, _, _| {
+                // C 原版：仅在效果启用时计数
+                if enabled_flag.load(Ordering::Relaxed) {
+                    let _ = cfg_clone.fetch_update(
+                        Ordering::SeqCst,
+                        Ordering::SeqCst,
+                        |v| if v < 60000 { Some(v + 1) } else { Some(v) },
+                    );
+                }
+            }))
+            .into_any_element(),
+    ];
+    controls.extend(param_field(
+        t!("netclumsy.effect.reset.chance").into_owned(),
+        inputs.reset_chance,
         enabled,
-        direction_pair("reset-in", "reset-out", &cfg.reset.base, enabled, cx),
-        vec![
-            Button::new("reset-next")
-                .label(t!("netclumsy.effect.reset.now").into_owned())
-                .small()
-                .disabled(!enabled)
-                .on_click(cx.listener(move |_, _, _, _| {
-                    // C 原版：仅在效果启用时计数
-                    if enabled_flag.load(Ordering::Relaxed) {
-                        let _ = cfg_clone.fetch_update(
-                            Ordering::SeqCst,
-                            Ordering::SeqCst,
-                            |v| if v < 60000 { Some(v + 1) } else { Some(v) },
-                        );
-                    }
-                }))
-                .into_any_element(),
-            param_label(t!("netclumsy.effect.reset.chance").into_owned(), cx),
-            param_input(input, enabled),
-        ],
-        toggle_handler(cfg.reset.base.enabled.clone(), cx),
         cx,
-    )
+    ));
+    controls
 }
 
-pub fn bandwidth_row(cfg: &EngineConfig, input: &Entity<InputState>, triggered: bool, cx: &mut Context<MainWindow>) -> AnyElement {
-    let enabled = cfg.bandwidth.base.enabled.load(Ordering::Relaxed);
-    effect_row(
-        "effect-bandwidth",
-        t!("netclumsy.effect.bandwidth").into_owned().into(),
-        triggered,
-        enabled,
-        direction_pair("bandwidth-in", "bandwidth-out", &cfg.bandwidth.base, enabled, cx),
-        vec![
-            param_label(t!("netclumsy.effect.bandwidth.limit").into_owned(), cx),
-            param_input(input, enabled),
-        ],
-        toggle_handler(cfg.bandwidth.base.enabled.clone(), cx),
-        cx,
-    )
+fn bandwidth_controls(
+    _cfg: &EngineConfig,
+    inputs: &EffectInputs<'_>,
+    enabled: bool,
+    cx: &mut Context<'_, MainWindow>,
+) -> Vec<AnyElement> {
+    param_field(t!("netclumsy.effect.bandwidth.limit").into_owned(), inputs.bandwidth_limit, enabled, cx)
 }
