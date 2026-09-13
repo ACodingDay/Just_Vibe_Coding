@@ -468,6 +468,12 @@ impl MainWindow {
             .child(stats_bar::render(self, cx))
     }
 
+    /// 配置页（脚手架）：仅占位空白，后续在此实现 config.txt 的 Tab 内编辑
+    /// 并保存（AGENTS.md 路线图；届时同步放开过滤输入框的 readonly 限制）
+    fn render_config_page(&self, _cx: &Context<Self>) -> impl IntoElement {
+        v_flex().flex_1()
+    }
+
     /// 关于页：标题区（应用名 + 版本）+ 快捷键 + 项目信息
     fn render_about_page(&self, cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
@@ -631,6 +637,7 @@ impl Render for MainWindow {
                                 cx.notify();
                             }))
                             .child(Tab::new().label(t!("netclumsy.tab.degrade").into_owned()))
+                            .child(Tab::new().label(t!("netclumsy.tab.config").into_owned()))
                             .child(Tab::new().label(t!("netclumsy.tab.about").into_owned())),
                     )
                     .child(div().flex_1())
@@ -653,6 +660,7 @@ impl Render for MainWindow {
             // ③ 页面内容（按 active_tab 分发；统计栏属于劣化页，见 render_degrade_page）
             .child(match self.active_tab {
                 0 => self.render_degrade_page(cx).into_any_element(),
+                1 => self.render_config_page(cx).into_any_element(),
                 _ => self.render_about_page(cx).into_any_element(),
             })
             // ④ 模态层（Dialog / Sheet / Notification），必须挂在内容之上

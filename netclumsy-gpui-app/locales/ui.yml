@@ -14,6 +14,9 @@ netclumsy:
   tab.about:
     zh-CN: 关于
     en: About
+  tab.config:
+    zh-CN: 配置
+    en: Config
   notify.start_failed.title:
     zh-CN: 启动失败
     en: Start failed
@@ -80,6 +83,9 @@ netclumsy:
   window.admin.badge:
     zh-CN: 管理员权限
     en: Admin Privileges
+  single_instance.already_running:
+    zh-CN: 已经有一个 NetClumsy 实例在运行，请使用现有窗口。
+    en: Another NetClumsy instance is already running. Use the existing window.
   window.admin.not_admin:
     zh-CN: 非管理员权限
     en: Not Admin

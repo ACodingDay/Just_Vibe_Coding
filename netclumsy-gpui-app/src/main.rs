@@ -8,6 +8,7 @@ mod assets;
 mod elevate;
 mod engine;
 mod presets;
+mod single_instance;
 mod ui;
 
 use assets::Assets;
@@ -48,6 +49,15 @@ fn main() {
     if parsed.help {
         print!("{}", args::help_text());
         return;
+    }
+
+    // 单实例互斥（原版 clumsy checkIsRunning）：必须放在提权之前，否则已有
+    // 实例运行时第二次启动会先弹一次 UAC 提权框再被拦下，白白打扰用户。
+    // 互斥体句柄持有到进程退出，由系统回收（同原版语义）。
+    if !single_instance::try_acquire() {
+        crate::debug_log("single instance: refused to start, another instance is running");
+        single_instance::alert_already_running();
+        std::process::exit(1);
     }
 
     // 测试开关：NETCLUMSY_FORCE_NOT_ADMIN=1 时跳过自动提权、以非管理员身份进 GUI，
