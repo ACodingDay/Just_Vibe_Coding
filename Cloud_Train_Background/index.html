@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>云间列车 · Cloud Train — Code-Codex 背景插件独立测试</title>
+<!--
+  本页为 Rice-dog/code-codex v0.2.15「云间列车 Cloud Train Background」插件的独立提取测试版。
+  渲染核心（CloudTrainRenderer）与 shader 组装逻辑原样提取自
+  packages/explorer-ui/src/explorer-element.ts（commit 0902983a），
+  供在没有 Codex Desktop / 非 Windows 环境下直接预览效果。
+  原始 shader 作者是 mdb（源项目注释："Original supplied shader credited to mdb.
+  No redistribution license was supplied."），请勿再分发。
+
+  按职责拆分的文件结构：
+    css/base.css    — 全局 reset、画布、页头
+    css/panel.css   — 设置面板与控件样式
+    css/picker.css  — 内嵌取色器样式
+    css/modal.css   — 重置确认弹窗样式
+    js/config.js         — 设置默认值、控件定义、localStorage 存取与迁移
+    js/shader-source.js  — 原始 shader 源码常量
+    js/shader-build.js   — shader 染色/开场动画组装，产出最终片元着色器
+    js/renderer.js       — WebGL 2 渲染器（CloudTrainRenderer 的纯 JS 版）
+    js/panel.js          — 设置面板构建、同步与按钮逻辑
+    js/picker.js         — 自定义取色器（HSV 面板 + 吸管）
+    js/main.js           — 装配入口（boot）
+-->
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/panel.css">
+<link rel="stylesheet" href="css/picker.css">
+<link rel="stylesheet" href="css/modal.css">
+</head>
+<body>
+<canvas id="cloud-train"></canvas>
+
+<header>
+  <h1>云间列车 · Cloud Train</h1>
+  <p>原项目: Rice-dog/code-codex</p>
+</header>
+
+<aside id="panel">
+  <div id="panel-head">
+    <div><b>云间列车设置</b></div>
+    <button id="panel-toggle" aria-label="折叠/展开设置面板">▾</button>
+  </div>
+  <div id="panel-body">
+    <fieldset id="controls"><legend>列车与云海</legend></fieldset>
+    <div id="picker" hidden>
+      <div class="picker-head">
+        <b id="picker-title">调整颜色</b>
+        <button id="picker-close" title="关闭（放弃本次修改）" aria-label="关闭取色器">
+          <svg viewBox="0 0 16 16" width="12" height="12"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div id="picker-sv"><div id="picker-dot"></div></div>
+      <div class="picker-mid">
+        <button id="picker-eyedropper" title="从屏幕取色" aria-label="从屏幕取色">
+          <svg viewBox="0 0 16 16" width="14" height="14"><path d="M11.2 1.6l3.2 3.2-7.8 7.8L3 14l1.4-3.6ZM9.6 3.2l3.2 3.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+        </button>
+        <div id="picker-swatch"></div>
+        <input type="range" id="picker-hue" min="0" max="360" step="1" aria-label="色相">
+      </div>
+      <div class="picker-bottom">
+        <div class="ch"><input type="number" id="picker-r" min="0" max="255">R</div>
+        <div class="ch"><input type="number" id="picker-g" min="0" max="255">G</div>
+        <div class="ch"><input type="number" id="picker-b" min="0" max="255">B</div>
+        <button id="picker-ok">确认</button>
+      </div>
+    </div>
+    <fieldset id="tint-controls"><legend>染色（默认色即原画配色）</legend></fieldset>
+    <label class="toggle-row"><input type="checkbox" id="ctl-introEnabled" checked>启用开场动画</label>
+    <label class="toggle-row"><input type="checkbox" id="ctl-paused">暂停动画</label>
+    <label class="toggle-row"><input type="checkbox" id="ctl-ignoreReducedMotion">忽略系统「减少动态效果」</label>
+    <p id="rm-hint" hidden>检测到系统开启了「减少动态效果」，动画已被冻结。勾选上方选项可强制播放；也可在 Windows 设置 → 辅助功能 → 视觉效果 → 动画效果 中开启。</p>
+    <div class="actions">
+      <button id="btn-reset">一键重置</button>
+      <button id="btn-save">记住当前设置</button>
+      <button id="btn-replay">重播</button>
+    </div>
+    <p id="err"></p>
+  </div>
+</aside>
+
+<div id="modal-mask" hidden>
+  <div id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-text">
+    <p id="modal-text">回到初始化参数的状态？</p>
+    <small>将清除已记录的个性化设置</small>
+    <div class="modal-actions">
+      <button id="modal-cancel">取消</button>
+      <button id="modal-ok">确认重置</button>
+    </div>
+  </div>
+</div>
+
+<!-- 加载顺序有依赖：config → shader 源码 → shader 组装 → 渲染器 → 面板/取色器 → 入口 -->
+<script src="js/config.js"></script>
+<script src="js/shader-source.js"></script>
+<script src="js/shader-build.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/panel.js"></script>
+<script src="js/picker.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

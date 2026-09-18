@@ -1,0 +1,53 @@
+/* ============================================================
+ * picker.css — 内嵌取色器：SV 明度面板、色相条、RGB 输入与吸管按钮
+ * ============================================================ */
+#picker { padding: 2px 0 4px; margin: 4px 0; }
+#picker[hidden] { display: none; }
+.picker-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.picker-head b { font-size: 12px; font-weight: 600; }
+#picker-close {
+  width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+  color: #dfe9f2; background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.16); border-radius: 6px; cursor: pointer;
+}
+#picker-close:hover { background: rgba(255,255,255,.15); }
+#picker-sv { position: relative; height: 150px; border-radius: 8px; cursor: crosshair; }
+#picker-dot {
+  position: absolute; width: 12px; height: 12px; border: 2px solid #fff; border-radius: 50%;
+  transform: translate(-50%, -50%); box-shadow: 0 0 4px rgba(0,0,0,.55); pointer-events: none;
+}
+.picker-mid { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+#picker-eyedropper {
+  width: 26px; height: 26px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #dfe9f2; background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.16); border-radius: 6px; cursor: pointer;
+}
+#picker-eyedropper:hover { background: rgba(255,255,255,.15); }
+#picker-swatch {
+  width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.65); box-sizing: border-box;
+}
+#picker-hue {
+  flex: 1; height: 26px; margin: 0; -webkit-appearance: none; appearance: none;
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  border-radius: 6px; cursor: pointer;
+}
+#picker-hue::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 10px; height: 26px; border-radius: 3px;
+  background: #fff; border: 1px solid rgba(0,0,0,.4); cursor: pointer;
+}
+.picker-bottom { display: flex; align-items: stretch; gap: 6px; margin-top: 12px; }
+.picker-bottom .ch { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; opacity: .75; }
+.picker-bottom input {
+  width: 100%; height: 30px; box-sizing: border-box; text-align: center;
+  color: #dfe9f2; font: inherit; font-size: 13px;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); border-radius: 6px;
+  appearance: textfield; -moz-appearance: textfield;
+}
+.picker-bottom input::-webkit-inner-spin-button { display: none; }
+#picker-ok {
+  flex: 1.15; margin-left: 2px; font-size: 13px; cursor: pointer;
+  color: #fff; background: #c96f3b; border: none; border-radius: 6px;
+}
+#picker-ok:hover { background: #d97f49; }
