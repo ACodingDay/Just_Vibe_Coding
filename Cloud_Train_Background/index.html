@@ -18,8 +18,11 @@
     css/picker.css  — 内嵌取色器样式
     css/modal.css   — 重置确认弹窗样式
     js/config.js         — 设置默认值、控件定义、localStorage 存取与迁移
-    js/shader-source.js  — 原始 shader 源码常量
-    js/shader-build.js   — shader 染色/开场动画组装，产出最终片元着色器
+    js/themes/subject-train.js — 共享主体块（列车+烟雾+桥）与 mainImage 骨架/公共函数
+    js/themes/clouds.js        — 云海主题描述符（场景 + 染色/开场组装配方 + uniform 清单）
+    js/themes/registry.js      — 主题注册表与 getCloudTrainTheme
+    js/shader-source.js  — 原始 shader 源码常量（SHADER_ORIGINAL 由主题拼块组装，仅供 verify 校验）
+    js/shader-build.js   — shader 组装入口：由主题 assemblyFn 产出最终片元着色器
     js/renderer.js       — WebGL 2 渲染器（CloudTrainRenderer 的纯 JS 版）
     js/panel.js          — 设置面板构建、同步与按钮逻辑
     js/picker.js         — 自定义取色器（HSV 面板 + 吸管）
@@ -92,8 +95,11 @@
   </div>
 </div>
 
-<!-- 加载顺序有依赖：config → shader 源码 → shader 组装 → 渲染器 → 面板/取色器 → 入口 -->
+<!-- 加载顺序有依赖：config → 主题拼块/描述符/注册表 → shader 源码 → shader 组装 → 渲染器 → 面板/取色器 → 入口 -->
 <script src="js/config.js"></script>
+<script src="js/themes/subject-train.js"></script>
+<script src="js/themes/clouds.js"></script>
+<script src="js/themes/registry.js"></script>
 <script src="js/shader-source.js"></script>
 <script src="js/shader-build.js"></script>
 <script src="js/renderer.js"></script>

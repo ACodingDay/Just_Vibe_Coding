@@ -21,8 +21,11 @@ const j1 = orig.indexOf('// ======== 设置定义');
 const j2 = orig.indexOf('// ======== shader 源码与组装');
 const origCfgCtx = Function(orig.slice(j1, j2) + ';return {D:CLOUD_TRAIN_DEFAULTS,C:CLOUD_TRAIN_CONTROLS,T:CLOUD_TRAIN_TINTS};')();
 
-// 3) 加载拆分后的 config / shader-source / shader-build
+// 3) 加载拆分后的 config / themes / shader-source / shader-build（与 index.html 同序）
 const mine = fs.readFileSync(BASE + 'js/config.js', 'utf8')
+  + '\n' + fs.readFileSync(BASE + 'js/themes/subject-train.js', 'utf8')
+  + '\n' + fs.readFileSync(BASE + 'js/themes/clouds.js', 'utf8')
+  + '\n' + fs.readFileSync(BASE + 'js/themes/registry.js', 'utf8')
   + '\n' + fs.readFileSync(BASE + 'js/shader-source.js', 'utf8')
   + '\n' + fs.readFileSync(BASE + 'js/shader-build.js', 'utf8');
 const myCtx = Function(mine + ';return {D:CLOUD_TRAIN_DEFAULTS,C:CLOUD_TRAIN_CONTROLS,T:CLOUD_TRAIN_TINTS,SO:SHADER_ORIGINAL,SI:SHADER_IMAGE,SV:SHADER_VERTEX,SF:SHADER_FRAGMENT};')();
@@ -44,10 +47,17 @@ cmp('SHADER_VERTEX', origShaderCtx.SV, myCtx.SV);
 cmp('SHADER_FRAGMENT(最终组装结果)', origShaderCtx.SF, myCtx.SF);
 
 // 4) 其余 JS 模块语法检查
-for (const f of ['renderer.js', 'panel.js', 'picker.js', 'main.js']) {
-  const r = spawnSync(process.execPath, ['--check', BASE + 'js/' + f], { encoding: 'utf8' });
-  lines.push((r.status === 0 ? 'PASS' : 'FAIL') + '  syntax: ' + f + (r.status === 0 ? '' : '\n' + r.stderr));
-  if (r.status !== 0) fail++;
+for (const f of ['themes/subject-train.js', 'themes/clouds.js', 'themes/registry.js', 'shader-build.js', 'renderer.js', 'panel.js', 'picker.js', 'main.js']) {
+  const path = BASE + 'js/' + f;
+  const r = spawnSync(process.execPath, ['--check', path], { encoding: 'utf8' });
+  let ok = r.status === 0, detail = r.stderr;
+  if (r.error) {
+    // 部分运行环境禁止 spawn 子进程（EBUSY），退回 new Function 编译级语法检查
+    try { new Function(fs.readFileSync(path, 'utf8')); ok = true; detail = ''; }
+    catch (e) { ok = false; detail = String(e); }
+  }
+  lines.push((ok ? 'PASS' : 'FAIL') + '  syntax: ' + f + (ok ? '' : '\n' + detail));
+  if (!ok) fail++;
 }
 
 // 5) index.html 引用的文件都存在

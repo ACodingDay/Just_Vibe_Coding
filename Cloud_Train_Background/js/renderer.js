@@ -43,8 +43,10 @@ function startCloudTrain(canvas, state, wakeRef, hooks) {
     const scene = program(SHADER_FRAGMENT.replace('t+4.*float(i)/float(n)/60.', 't+(4./3.)*float(i)/float(n)/60.'));
     const post = program(SHADER_IMAGE);
     const locations = (p, names) => Object.fromEntries(names.map(k => [k, gl.getUniformLocation(p, k)]));
-    const tintKeys = ['skyTint','smokeTint','trainTint'];
-    const a = locations(scene, ['iResolution','iTime','iChannel0','iChannel1','uFeedback','zoom','offset','amplitude','uDetail','intro','introFeather', ...tintKeys]);
+    // uniform 清单由当前主题描述符提供，行为与原硬编码列表一致
+    const theme = getCloudTrainTheme();
+    const tintKeys = theme.tintUniforms;
+    const a = locations(scene, [...theme.sceneUniforms, ...tintKeys]);
     const b = locations(post, ['resolution','scene','vignette','exposure','saturation','hue','temperature','intro','introFeather']);
     const quad = gl.createBuffer(); buffers.push(quad);
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);

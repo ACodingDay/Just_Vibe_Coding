@@ -1,0 +1,30 @@
+PASS  CLOUD_TRAIN_DEFAULTS(剔除新增项)
+PASS  CLOUD_TRAIN_CONTROLS
+PASS  CLOUD_TRAIN_TINTS
+PASS  SHADER_ORIGINAL
+PASS  SHADER_IMAGE
+PASS  SHADER_VERTEX
+PASS  SHADER_FRAGMENT(最终组装结果)
+PASS  syntax: themes/subject-train.js
+PASS  syntax: themes/clouds.js
+PASS  syntax: themes/registry.js
+PASS  syntax: shader-build.js
+PASS  syntax: renderer.js
+PASS  syntax: panel.js
+PASS  syntax: picker.js
+PASS  syntax: main.js
+PASS  asset exists: css/base.css
+PASS  asset exists: css/panel.css
+PASS  asset exists: css/picker.css
+PASS  asset exists: css/modal.css
+PASS  asset exists: js/config.js
+PASS  asset exists: js/themes/subject-train.js
+PASS  asset exists: js/themes/clouds.js
+PASS  asset exists: js/themes/registry.js
+PASS  asset exists: js/shader-source.js
+PASS  asset exists: js/shader-build.js
+PASS  asset exists: js/renderer.js
+PASS  asset exists: js/panel.js
+PASS  asset exists: js/picker.js
+PASS  asset exists: js/main.js
+ALL EQUAL / ALL OK
