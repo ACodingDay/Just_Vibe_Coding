@@ -1,4 +1,4 @@
-# NetClumsy 发布包组装脚本
+﻿# NetClumsy 发布包组装脚本
 # 用法（管理员 PowerShell）: .\script\package.ps1
 # 产物: dist\netclumsy-<version>\ 与 dist\netclumsy-<version>.zip
 # 包含: netclumsy.exe + WinDivert.dll + WinDivert64.sys + config.txt + 许可证文本
