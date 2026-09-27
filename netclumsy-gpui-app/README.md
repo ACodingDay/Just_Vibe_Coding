@@ -9,9 +9,8 @@
 | 层级 | 技术 |
 |------|------|
 | 🦀 开发语言 | **Rust** (single binary) |
-| 🎨 UI 框架 | **GPUI**（Zed 的 GPU 加速原生 UI 框架） |
-| 🧩 UI 组件 | **gpui-component**（60+ 跨平台组件） |
-| 🔌 核心依赖 | **windivert** crate + 官方签名 WinDivert 驱动 |
+| 🎨 UI 框架 | **gpui-kit 0.6**（crates.io 单依赖，内含 GPUI 新版本线 + 跨平台组件库） |
+| 🔌 核心依赖 | **windivert-sys** 原生 FFI + 官方签名 WinDivert 驱动 |
 
 ## ✨ 主要功能
 
@@ -23,9 +22,12 @@
 - 🔀 **Out of order 乱序** — 按概率交换 / 押后相邻包（主要针对 UDP）
 - 🔧 **Tamper 篡改** — 按概率 XOR 破坏 payload，可开关 Redo Checksum
 - 💥 **Set TCP RST 断连** — 强制置 RST 标志直接掐断连接
-- 🌐 **中文界面** — 界面与效果参数全汉化（替代原版硬编码英文）
-- 📋 **过滤器预设** — 内置 WSL2 场景预设（8012 端口双向 / 上行 / 下行 / 排除回环），支持手动过滤表达式
+- 🌐 **中英双语界面** — 简体中文 / English 可切换（默认 English），语言写入 exe 同目录 `settings.json`，更改后弹窗提示重启生效；界面与效果参数全量走 i18n
+- ⚙️ **设置页** — 当前仅「界面语言」一项，采用主流设置页布局（分区标题 + 行卡片），语言选择为可搜索 Select
+- 📋 **过滤器预设** — exe 同目录 config.txt 加载（原版格式，随包附带 WSL2 8012 双向 / 上行 / 下行 / 排除回环等示例），支持手动过滤表达式
+- 🖥️ **参数化启动** — 兼容原版 clumsy 命令行参数，另支持 --filter / --timeout / --capture / --help
 - 📊 **实时统计** — 包速率与匹配计数实时显示，方向开关（Inbound / Outbound）与原版一致
+- 🔒 **单实例互斥** — 已有实例运行时再次启动直接拦截并提示（原版 checkIsRunning 行为；两个实例会互相劈裂 WinDivert 流量，故禁止并存）
 
 ## ⚠️ 注意事项
 
@@ -37,17 +39,23 @@
 ## 🚀 开发
 
 ```bash
-# 环境准备（Windows 10+）
-.\script\install-window.ps1   # 安装 GPUI 依赖工具链
-
-# 构建依赖环境变量
-$env:WINDIVERT_PATH = "C:\path\to\windivert"   # 需包含 DLL / LIB / SYS
+# WinDivert 路径已在 .cargo/config.toml 固化（相对项目根的 windivert/WinDivert-2.2.2-A/x64，
+# force 覆盖 shell 残留值），正常情况无需手动设置环境变量，直接：
 
 # 运行
 cargo run
 
-# 构建发布版本
-cargo build --release
+# 命令行参数（兼容原版 clumsy，带参数启动自动开始过滤）
+cargo run -- --lag on --lag-time 200 --filter "tcp and tcp.DstPort == 8012"
+cargo run -- --drop on --drop-chance 20 --timeout 60
+cargo run -- --capture on --filter "udp"
+cargo run -- --help
+
+# 过滤器预设：把 etc/config.txt 复制到 exe 同目录（如 target/debug/）后启动生效；
+# 缺失时回退 1 条 loopback 预设（与原版行为一致）
+
+# 打包发布（组装 dist/netclumsy-<版本>.zip：exe + WinDivert + config.txt + 许可证文本）
+.\script\package.ps1
 ```
 
 ## 📁 项目结构
@@ -55,15 +63,31 @@ cargo build --release
 ```
 netclumsy-gpui-app/
 ├── src/                    # 应用源码
-│   ├── main.rs             # 入口（提权 manifest + GPUI 初始化）
+│   ├── main.rs             # 入口（读设置 → CLI 解析 → 提权 → GPUI 初始化）
+│   ├── args.rs             # 命令行参数（兼容原版 parseArgs + 校验 + --help）
+│   ├── settings.rs         # 应用设置（exe 同目录 settings.json，当前仅语言）
+│   ├── presets.rs          # config.txt 预设加载（原版格式 + 安全化）
+│   ├── elevate.rs          # 管理员提权（重启时透传命令行参数）
+│   ├── single_instance.rs  # 单实例互斥
+│   ├── assets.rs           # 图标嵌入（rust-embed + gpui-kit 内置图标回退）
 │   ├── engine/             # 包处理引擎（windivert）
-│   │   ├── filter.rs       # 过滤器解析与预设
-│   │   ├── effects/        # 8 个效果模块（lag / drop / throttle / ...）
-│   │   └── stats.rs        # 实时统计
-│   └── ui/                 # GPUI 界面组件
-│       ├── main_window.rs  # 主窗口布局
-│       ├── effect_panel.rs # 效果参数面板
-│       └── components/     # 通用组件
+│   │   ├── mod.rs          # 引擎生命周期 + 双线程 + consume 管线
+│   │   ├── send.rs         # 包回注（FIFO + ICMP workaround + 校验和重算）
+│   │   ├── stats.rs        # CRateStats 滑动窗口速率统计
+│   │   ├── config.rs       # Arc<Atomic> 共享配置
+│   │   ├── ffi.rs          # windivert-sys FFI 封装（句柄幂等关闭 + Drop 兜底）
+│   │   ├── packet.rs       # 包数据类型
+│   │   └── effects/        # 8 个效果模块（lag / drop / throttle / ...）
+│   └── ui/                 # gpui-kit 界面组件
+│       ├── main_window.rs  # 主窗口 + 设置页/关于页 + 状态轮询
+│       ├── title_bar.rs    # 自定义标题栏（品牌区 + 主题切换）
+│       ├── filter_bar.rs   # 过滤器输入 + 预设 Select + 启动/捕获/停止
+│       ├── effect_panel.rs # 效果行组件（EFFECTS spec 表驱动）
+│       ├── stats_bar.rs    # 包速率曲线 + 匹配数读数
+│       └── theme.rs        # 深/浅双主题 seed token
+├── etc/config.txt          # 随包分发的预设示例
+├── script/                 # package.ps1 打包 + 第三方声明
+├── locales/                # i18n 文案（zh-CN / en）
 ├── docs/                   # 使用备忘与设计文档
 ├── windivert/              # WinDivert DLL / LIB / SYS（官方签名）
 ├── Cargo.toml

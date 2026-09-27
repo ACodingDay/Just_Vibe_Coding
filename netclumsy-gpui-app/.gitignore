@@ -1,2 +1,5 @@
 # Rust / Cargo build output
 /target/
+
+# 打包产物（script/package.ps1 生成）
+/dist/

@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use gpui::*;
+use gpui_kit::*;
 use rust_embed::RustEmbed;
 use std::borrow::Cow;
 

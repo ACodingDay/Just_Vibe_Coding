@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-15T14:05:00.000Z",
+  "brief": {
+    "artifactType": "桌面应用界面高保真布局设计稿",
+    "targetPlatform": [
+      "desktop",
+      "windows"
+    ],
+    "audience": "开发者/QA，做网络容错调试（模拟高延迟、丢包、弱网验证应用容错能力）",
+    "businessGoal": "让开发者在一个约 920×720 的紧凑窗口内，快速配置并实时启停 8 种网络劣化效果，通过指示灯与实时速率曲线直观确认劣化是否生效；同时为后续新增页面预留顶部 Tabs 切换结构",
+    "product": "NetClumsy —— Windows 网络包劣化工具（jagt/clumsy 的 Rust + GPUI 重写，WinDivert 内核驱动，中文界面）",
+    "functionalScope": [
+      "过滤器：WinDivert 过滤表达式输入 + config.txt 预设下拉（如 wsl2 ws 8012 both）",
+      "引擎控制：Capture 捕获（嗅探）/ Start 启动 / Stop 停止 + 发送状态三态灯（灰/绿/红）",
+      "8 个劣化效果行（顺序必须与引擎处理顺序一致）：lag 延迟(0-15000ms) → drop 丢包(%) → throttle 节流(%+时间窗ms+丢弃节流包) → duplicate 重复(份数2-50+%) → ood 乱序(%) → tamper 篡改(%+重算校验和) → reset TCP RST 断连(%+RST下一包按钮) → bandwidth 限带宽(KB/s)",
+      "每个效果：触发指示灯（灰=未触发/绿=触发）+ Switch 总开关 + Inbound/Outbound 方向复选 + 参数输入",
+      "实时统计：包速率（pps，1s 滑动窗口）迷你曲线 + 当前速率读数 + 匹配包计数，UI 200ms 轮询",
+      "状态提示：就绪/已启动/已停止/启动失败，管理员权限徽标"
+    ],
+    "constraints": [
+      "最终实现为 Rust + GPUI 0.2.2 + gpui-component 0.5.1；设计稿组件语义须可映射到 TitleBar/Button/Switch/Checkbox/Input/Select/StatusBar/Chart",
+      "界面文案使用现有 locales/ui.yml 中文文案（延迟、丢包、节流、限带宽、重复、乱序、篡改、断连、入站、出站等），不得自造术语",
+      "窗口约 920×720（尺寸可按信息密度灵活调整，不拘泥固定值）；无响应式需求，内容超高时效果列表区内部滚动",
+      "导航结构：当前仅 1 个功能页，采用 gpui-component 顶部 Tabs 预留多页切换（评估结论：单页+高密度效果行场景下，顶部 Tabs 保留水平空间、窗口更紧凑；若后续页面超过约 4-5 个或出现设置树/导航层级，再换 Sidebar）",
+      "深色主题优先，同时定义明暗两套 seed token 便于 GPUI 主题落地"
+    ]
+  },
+  "output": {
+    "target": "html",
+    "componentLibrary": "none（视觉语义对齐 gpui-component：TitleBar/Tabs/Button/Switch/Checkbox/Input/Select/StatusBar/Chart）",
+    "previewStrategy": "Single-file index.html rendered at a ~920×720 canvas viewport via canvas:width/canvas:height meta tags."
+  },
+  "artifacts": [
+    {
+      "path": "index.html",
+      "action": "create",
+      "purpose": "NetClumsy 主窗口高保真界面设计稿：以约 920×720 画布呈现「运行中」的完整工作状态（含顶部 Tabs 页面切换位），作为 GPUI 实现的布局、尺寸、配色与组件映射依据。",
+      "requirements": [
+        "画布约 920×720（可按密度微调），包含 <meta name=\"canvas:width\"> 与 canvas:height 标注实际尺寸；整体呈现为一个带阴影的桌面应用窗口，置于中性深色桌面背景上",
+        "结构自上而下五个分区：① 标题栏(约40px)：应用图标+NetClumsy 名称+「网络包劣化工具」副标题+运行状态徽标+窗口控制按钮(最小化/最大化/关闭)；② 页面 Tabs 栏(约36px)：gpui-component Tabs 语义，当前仅 1 个激活页『劣化』，右侧预留可扩展位（注释标注后续可增加设置/统计等页）；③ 过滤与控制区：过滤器表达式输入框（等宽字体，占位符『tcp and tcp.DstPort == 8012』，填真实示例值）+ 预设下拉（选中态 wsl2 ws 8012 both）+ 发送状态三态灯 + Capture/Start/Stop 按钮（Start 为 primary、Stop 为 danger 态）+ 管理员权限徽标；④ 效果列表区（flex-1，内部可滚动）：8 行效果，行高约 52px，每行=触发指示灯+中文效果名(小号英文别名)+Switch 开关+入站/出站方向复选+参数控件，参数输入框等宽字体宽约 64px 带单位后缀(ms/%/KB/s/份)；效果顺序严格为 lag→drop→throttle→duplicate→ood→tamper→reset→bandwidth；throttle 行含『丢弃节流包』复选框与时间窗输入，tamper 行含『重算校验和』复选框，reset 行含『RST 下一包』小按钮；⑤ 统计状态栏(约84px)：左侧运行状态文本（如『已启动过滤，启用效果后实时生效』）+ 发送状态说明，右侧为包速率 sparkline 迷你曲线（约 220×36，近 30 秒滚动，内联 SVG 绘制）+ 当前速率大字读数(如 1,284 pkt/s) + 匹配包计数(如 12,958)",
+        "呈现『运行中且有流量』的状态叙事：引擎运行中，Lag(50ms) 与 Drop(20%) 已开启且触发指示灯亮绿色，Throttle 处于关闭置灰，发送状态灯绿色，速率曲线有真实波形起伏；禁用行的控件、标签按 disabled 态降饱和处理",
+        "深色专业工具风：背景近黑蓝(#0B0E14 级)，面板表面 2 级分层，1px 低对比描边分区；正文文字 #E6E9EF 级、次要文字 #8A93A6 级；主操作色为克制的工具蓝(#4C8DFF 级)，成功/触发绿(#3ECF8E 级)、告警/发送失败红(#F0564A 级)、管理员警示琥珀(#E8A33D 级)；禁用 AI 默认紫/靛色渐变",
+        "字体：界面中文用系统无衬线栈(如 'Inter','Microsoft YaHei' 回退)，过滤表达式与所有数值读数用等宽字体栈；字号阶梯约 11/12/13/14/20px，行内控件文字 12-13px，统计读数 18-20px",
+        "以 CSS 自定义属性定义 seed token（--seed-bg/--seed-surface/--seed-fg/--seed-muted/--seed-primary/--seed-accent/--seed-success/--seed-danger/--seed-warning/--seed-radius），明暗两套主题均从 seed 派生；控件圆角 6-8px，行内间距 8/12/16px 栅格",
+        "所有文案使用真实产品文案（取自仓库 locales/ui.yml），禁止 lorem/占位符；数值为可信示例数据",
+        "为主要区块添加 data-component 标注（titlebar/tabs-bar/filter-bar/effect-row/stats-bar），并在 HTML 注释中标注每个分区到 gpui-component 组件的映射（如 tabs-bar → Tabs、effect-row → Switch+Checkbox+Input），便于 Rust 实现对照",
+        "指示灯为 10px 圆形三态（灰 #3A4150 未触发 / 绿 触发 / 红 发送失败），带柔和发光；Switch 尺寸约 28×16",
+        "单文件实现（HTML+CSS+内联 SVG），无外部图片依赖；不引入 JS 交互框架"
+      ]
+    }
+  ],
+  "designDirection": {
+    "fidelity": "high-fidelity",
+    "styleSource": "用户确认的视觉方向：深色专业开发者工具风（Wireshark/Proxyman 气质，高信息密度、状态灯与告警色突出）；风格参考以 Linear（深色、紧凑、安静渐变）为主，Figma/Supabase 的工具精度与开发者绿为灵感",
+    "visualTone": [
+      "深色专业",
+      "高信息密度",
+      "状态驱动",
+      "开发者工具",
+      "克制的工具蓝+信号绿"
+    ],
+    "themeTokens": {
+      "darkSeed": {
+        "--seed-bg": "#0B0E14",
+        "--seed-surface": "#12161F",
+        "--seed-fg": "#E6E9EF",
+        "--seed-muted": "#8A93A6",
+        "--seed-primary": "#4C8DFF",
+        "--seed-accent": "#3ECF8E",
+        "--seed-danger": "#F0564A",
+        "--seed-warning": "#E8A33D",
+        "--seed-radius": "8px"
+      },
+      "lightSeed": "提供对应浅色 seed 组（bg #F5F6F8 级），通过 Appearance preset 切换，满足后续 GPUI 双主题落地"
+    }
+  },
+  "structure": {
+    "navigation": "顶部 Tabs（gpui-component Tabs）：当前 1 个功能页『劣化』，预留后续页面扩展；评估结论——页面少且效果行信息密度高时，顶部 Tabs 不占水平空间、窗口更紧凑，优于 Sidebar；若后续页面 >4-5 个或需要导航层级再评估 Sidebar。",
+    "screens": [
+      {
+        "id": "main-window",
+        "name": "NetClumsy 主窗口（运行中状态）",
+        "viewport": "约 920×720（可按密度微调）",
+        "regions": [
+          "titlebar ~40px",
+          "tabs-bar ~36px",
+          "filter-control-bar ~100px",
+          "effect-list flex-1 可滚动",
+          "stats-status-bar ~84px"
+        ]
+      }
+    ],
+    "sections": [
+      "标题栏：图标+名称+副标题+运行徽标+窗口控制",
+      "页面 Tabs 栏：当前激活页『劣化』，预留扩展",
+      "过滤与控制区：过滤器输入、预设下拉、Capture/Start/Stop、发送状态灯、管理员徽标",
+      "效果列表：8 行劣化效果（固定顺序，行内指示灯/Switch/方向/参数）",
+      "统计状态栏：状态文本、速率 sparkline、速率读数、匹配计数"
+    ]
+  },
+  "interaction": {
+    "primaryFlow": "选择预设或输入过滤表达式 → Capture 验证匹配 → Start 启动 → 逐个开启效果并调参（实时生效，指示灯反馈触发）→ 观察速率曲线与匹配数 → Stop 停止",
+    "states": [
+      "引擎停止（就绪）：Start 可用、Capture 可用、Stop 隐藏为 Start 替代、过滤器可编辑",
+      "引擎运行中：过滤器与预设禁用、Stop(danger) 显示、速率曲线滚动、触发灯按 200ms 轮询闪烁",
+      "效果行启用/禁用：禁用行参数控件与方向复选置灰降饱和",
+      "发送状态三态：灰(无)/绿(发送成功)/红(发送失败)",
+      "启动失败：状态栏红色错误文案（设计稿以运行中为主态，错误态以 token 与文案规范体现）"
+    ]
+  },
+  "quality": {
+    "responsive": false,
+    "accessibility": true,
+    "lintRequired": true,
+    "acceptanceCriteria": [
+      "约 920×720 画布内五分区（标题栏/Tabs/过滤控制/效果列表/统计栏）完整呈现，8 个效果行顺序与引擎处理顺序一致且无文字溢出/裁切",
+      "运行态叙事成立：Lag/Drop 开启且触发灯亮、Throttle 关闭置灰、速率曲线有真实感波形、所有文案为真实产品文案",
+      "每个效果行的参数控件与该效果实际字段一一对应（如 throttle 有时间窗+丢弃节流包，reset 有 RST 下一包按钮），无遗漏无杜撰",
+      "深色主题对比度满足可读性（正文≥4.5:1），状态色（绿/红/琥珀）语义区分清晰",
+      "seed token 体系完整且明暗两套可切换；组件语义可映射到 gpui-component（HTML 注释给出映射表）",
+      "设计质量检查 P0=0，P1 全部修复或显式豁免"
+    ]
+  },
+  "risks": [
+    "新增 Tabs 栏后 720px 高度更紧张：效果行高控制在 48-52px、统计栏压缩至 ~84px；仍超高时效果列表内部滚动，或整体窗口高度上浮到 ~740px",
+    "throttle/tamper/reset 行控件较多可能超宽：参数控件右对齐、复选框文案精简（用 ui.yml 现有文案），行宽不足时允许该行两行布局",
+    "Tabs 目前只有 1 个页签，视觉上需避免『单标签』的突兀感：以分段式 Tabs 样式呈现并与标题栏层级区分；页面超过 4-5 个时应重新评估改用 Sidebar",
+    "设计稿为静态 HTML，GPUI 实际实现存在组件能力差异（如 sparkline 需 Chart/Plot 或自绘）：以 data-component 与注释标注映射，降低实现歧义",
+    "中文字体在不同 DPI 下渲染差异：字号以 12px 为最小可读字号，避免 11px 大面积使用"
+  ],
+  "resources": {
+    "skill": {
+      "id": "dashboard",
+      "title": "dashboard",
+      "rationale": "桌面端状态密集型工具界面，单窗口多控件+实时统计，dashboard 技能的状态/数据布局纪律最匹配",
+      "alternatives": [
+        "saas-landing",
+        "mobile-app",
+        "web-prototype"
+      ]
+    },
+    "styleReference": {
+      "primary": "linear-app",
+      "inspiration": [
+        "figma",
+        "supabase"
+      ],
+      "rationale": "用户显式要求深色专业工具风：Linear 的深色(#08090A)、紧凑密度与安静渐变最贴合；Figma 的工具精度与 Supabase 的开发者绿作为灵感。推荐器默认 figma 为浅色参考，按用户深色约束改以 linear-app 为主参考。"
+    },
+    "requiredReads": [
+      {
+        "kind": "skill",
+        "id": "dashboard",
+        "reason": "Selected Canvas skill checklist."
+      },
+      {
+        "kind": "design-system",
+        "id": "linear-app",
+        "reason": "Primary style reference (dark professional tool)."
+      },
+      {
+        "kind": "craft",
+        "id": "anti-ai-slop",
+        "reason": "Baseline AI-slop guardrail for all Canvas design artifacts."
+      },
+      {
+        "kind": "craft",
+        "id": "typography",
+        "reason": "Baseline typography quality rule for visual execution."
+      },
+      {
+        "kind": "craft",
+        "id": "color",
+        "reason": "Baseline color quality rule for visual execution."
+      },
+      {
+        "kind": "protocol",
+        "id": "design-mode-runtime",
+        "reason": "Design Plan Mode execution and runtime contract."
+      },
+      {
+        "kind": "protocol",
+        "id": "skill-protocol",
+        "reason": "Skill metadata and resource selection contract."
+      }
+    ]
+  },
+  "abstract": "本计划为 NetClumsy（clumsy 的 Rust + GPUI 重写版网络包劣化工具）设计主窗口的高保真界面稿，服务对象是做网络容错测试的开发者与 QA，目标是让人在约 920×720 的紧凑窗口里快速配置并实时启停 8 种劣化效果、直观看到劣化是否生效。按你的修订意见：当前只有 1 个功能页，采用 gpui-component 顶部 Tabs 预留后续页面切换（相比 Sidebar，顶部 Tabs 不占水平空间，能保住高密度效果行所需的宽度；页面超过约 4-5 个再考虑 Sidebar），窗口尺寸放宽到约 920×720 并允许按信息密度微调。布局自上而下为标题栏、Tabs 栏、过滤与引擎控制区、8 行效果列表（指示灯/开关/方向/参数，顺序与引擎处理顺序一致）、底部状态栏（状态文案 + 包速率迷你曲线 + 匹配计数）。产出为单文件 HTML 高保真稿，组件语义对齐 gpui-component 并附实现映射标注，含明暗两套主题 token。批准前请重点确认：顶部 Tabs 的取舍结论、五分区高度分配、效果行信息密度、以及深色配色（工具蓝主色 + 信号绿/红状态色）。"
+}

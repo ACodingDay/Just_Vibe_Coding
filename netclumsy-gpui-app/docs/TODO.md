@@ -1,18 +1,51 @@
 # NetClumsy 开发 TODO
 
-> 状态：脚手架完成，引擎与 UI 待实现。本文档记录分析结论与任务清单。
+> 状态：**P0/P1/P2 完成**（引擎 + 8 效果 + UI 主窗口 + 统计 + config.txt/CLI/打包），gpui-kit 0.6 迁移与设置页已完成，P3 待实现。本文档记录分析结论与任务清单。
 
 ## 一、已完成 ✅
 
 | 项 | 说明 |
 |---|---|
 | 项目初始化 | Cargo 项目 `netclumsy`（edition 2024），仅 Windows |
-| 依赖锁定 | gpui 0.2.2 / gpui-component 0.5.1（crates.io，**无需 git 拉 zed 仓库**）/ windivert 0.6.0 / rust-i18n 4.2 / anyhow / rust-embed / windows 0.48 |
-| 编译验证 | `cargo check` 通过（需 `WINDIVERT_PATH` 指向 windivert 目录） |
+| 依赖锁定 | **gpui-kit 0.6.6**（crates.io 单依赖，内含 gpui / gpui-component 0.6.6 新版本线）/ windivert-sys 0.10.0 / rand 0.8 / rust-i18n 4.2 / anyhow / rust-embed / serde_json / windows 0.48 |
+| 编译验证 | `cargo check` / `cargo build` 通过（需 `WINDIVERT_PATH` 指向 windivert 目录） |
 | WinDivert 资源 | `windivert/WinDivert-2.2.2-A/`（官方 DLL/LIB/SYS，LGPLv3 动态链接） |
-| i18n | `locales/ui.yml`（zh-CN/en），启动时 `set_locale("zh-CN")`；组件自带 zh-CN 翻译（40 key），应用文案走 `t!()` |
+| i18n | `locales/ui.yml`（zh-CN/en），启动时按 `settings.json` 设置 `set_locale`（默认 **English**，缺失/损坏回退默认）；组件自带 zh-CN 翻译（40 key），应用文案走 `t!()` |
 | 管理员提权 | `src/elevate.rs`：运行时检测 + ShellExecute("runas") 重启（照搬 clumsy 原版 elevate.c；绕开 gpui manifest 资源冲突） |
 | 图标 | 99 个 Lucide SVG 已下载至 `assets/icons/`，rust-embed 嵌入（`src/assets.rs`） |
+| **P0 引擎** | `src/engine/`：双线程（recv + 40ms clock）+ `Mutex<VecDeque<Packet>>` 队列 + consume step，stop 流程复刻 C 原版（clock 线程 closeDown + send all + WinDivertClose 中断 recv） |
+| **P0 效果** | 8 个效果全部移植（lag/drop/throttle/duplicate/ood/tamper/reset/bandwidth），处理顺序与 C 原版一致 |
+| **P0 UI** | `src/ui/`：Filter 输入 + 4 个 8012 预设下拉 + Capture（SNIFF 嗅探）/Start/Stop + 发送状态灯 + 匹配包计数 + 8 组效果面板（开关 + Inbound/Outbound + 参数输入） |
+| **P0 指示灯** | 模块触发灯（位掩码 AtomicU32 + UI 200ms 轮询）+ 发送状态灯（AtomicU8 三态）已就绪 |
+| **P1 实时统计** | 包速率显示：CRateStats 移植抽取至 `src/engine/stats.rs`（bandwidth 复用同一实现）；recv 每包 update(1)、clock 40ms 发布 `rate_pps` 原子、UI 200ms 轮询显示（1000ms 滑动窗口，窗口未满显示 0，流量停止自然衰减）；顺带修复 matched_count 跨启动累积（Engine::new 清零） |
+| **P1 工程化收尾** | ① i18n 整句模板化：状态栏/错误提示的句子模板（含冒号、单位、code 位置）全部进 yml 用插值，代码零拼句；② 模块职责拆分：包回注（send_all + 入站 ICMP workaround）从 `engine/mod.rs` 拆出为 `engine/send.rs`；③ ffi 过滤器含 NUL 错误映射到 i18n key |
+| **P2 config.txt 兼容** | `src/presets.rs`：exe 同目录 config.txt（原版格式），规则与原版一致（# 注释/首个冒号分割/无冒号行终止解析/启动时加载一次）+ 安全化（64 条封顶、无 4096 截断、剥 BOM、UTF-8 失败按 GBK 兜底、trim、空条目跳过）；缺失/为空回退原版式 1 条 loopback 预设；单测 9 例 |
+| **P2 参数化启动** | `src/args.rs`：原版 key 全集 + `--help` + `--capture on|off` + `--bandwidth-limit` 别名；`elevate.rs` 提权重启透传命令行参数（修复原版丢参 bug）；`--timeout N` 秒自动退出；带参自动 Start（parameterized 原版行为）；错误提示 i18n；单测 8 例 |
+| **P2 打包发布** | `script/package.ps1` 一键组装 dist（exe + WinDivert.dll/sys + config.txt + 许可证文本）+ zip；`etc/config.txt` 示例（含 WSL2 预设）；[profile.release] strip + thin LTO；exe 图标/版本资源暂缓 |
+| **gpui-kit 0.6 迁移** | 依赖收敛为 crates.io `gpui-kit = "0.6"`（内含 gpui/gpui-component 0.6.6 新版本线）；全部 use 路径 `gpui_kit::*` / `gpui_kit::component::`；入口改 `application().with_assets()` / `gpui_kit::init(cx)`；注意：README（main 分支）演示的 `gpui_kit::open_window` 自由函数 0.6.6 尚未提供，仍用 `cx.open_window` + `Root::new`；随 gpui 0.2 引入的 proc-macro-error2 future-incompat 警告一并消失 |
+| **设置页** | 「配置」页签改「设置」；`src/settings.rs`：exe 同目录 settings.json 持久化（与 config.txt 同目录约定；缺失/损坏/非法语言码回退默认 English）；语言 Select（searchable，English/简体中文，展示名不随 locale 翻译）+ 更改即时写文件 + 与已生效语言不同时弹 Dialog 提示重启（选回原语言 = 静默撤销）；main.rs 提权解析前读设置，CLI 文案与 GUI 共用同一 locale；页面布局 = 整页滚动 + 分区标题 + 行卡片（左标签+说明、右控件），与主流设置页一致 |
+| **UI 打磨** | 自定义标题栏（title_bar.rs，品牌区 + 深/浅主题切换按钮，主题走 theme.rs seed token）；About 页重做：版本 Tag + 项目信息竖排（每组左说明右 `Button::link()` 变体按钮，`cx.open_url` 打开），移除快捷键区块；统计栏（stats_bar.rs）移入劣化页 |
+| **单实例互斥** | `src/single_instance.rs`：进程级互斥，重复启动拦截提示（对应原版 checkIsRunning；两个实例会互相劈裂 WinDivert 流量） |
+| **引擎行为修复** | 与 clumsy 0.3 逐文件对照后确立的差异（均为有意修复，详见代码注释）：① send_all 由 pop_back(LIFO) 改 FIFO（回注顺序，lag/ood 生效前提）；② lag/throttle/ood 回插方向统一；③ 入站 ICMP 重发后重算校验和（原版不重算 = workaround 失效）；④ Throttle 时段内持续返回 triggered（修触发灯闪断）；⑤ recv 连续错误 50 次退避放弃（原版无限忙等）；⑥ Mutex poison 兜底 + 句柄幂等关闭 + Drop 兜底；⑦ CRateStats evict 下溢修复；⑧ now_ms() 单调时钟替代 timeGetTime + timeBeginPeriod |
+
+### P0 实现决策（与原计划差异）
+
+1. **引擎底层改用 windivert-sys 0.10.0 原生 FFI**（替代 safe windivert crate）：safe crate 的 `close()`/`shutdown()` 需要 `&mut` 独占引用，而 recv 线程阻塞持有句柄，无法安全中断 recv（死锁）。原生 HANDLE 可 Copy 跨线程共享，完全复刻 C 原版停启语义（时钟线程调 `WinDivertClose` 中断 recv 线程）。windivert-sys 0.10.0 与 windivert 0.6.0 的内部依赖版本一致。
+2. **Capture = SNIFF 嗅探模式**：以 `WinDivertFlags::set_sniff()` 打开（不劫持流量，只收副本、统计匹配数，不回注、不处理效果）；Start = 正常 divert 模式。
+3. **P0 附带匹配包计数**：`AtomicU64` 计数 + UI 200ms 轮询显示（否则 Capture 无可见反馈）。
+4. **状态回传 = Atomic 位掩码 + UI 轮询**：`triggered_mask: AtomicU32`（fetch_or 累计）与 `send_state: AtomicU8`（三态），UI 200ms 轮询后 `swap(0)` 读清零，语义与 C 原版 processTriggered/sendState 一致。
+5. **时间源用 `Instant` 毫秒**（替代 C 的 timeGetTime + timeBeginPeriod(4ms)）：QPC 分辨率更高，行为等价，省去 winmm 依赖。
+6. **`rand` crate 等价 `calcChance`**：`chance >= 10000 || thread_rng().gen_range(0..10000) < chance`。
+7. **tamper/reset 用 `WinDivertHelperParsePacket` FFI**（与 C 一致处理 IPv4/IPv6/扩展头）；校验和重算用 `WinDivertHelperCalcChecksums(addr=NULL, flags=0)`。
+8. **入站 ICMP 回注失败 workaround 已移植**：置 Outbound + 交换 IP src/dst 后重发。
+9. **参数输入语义对齐 C 原版**：空/非法输入按 0 处理（钳到下限）且不回写文本；越界输入钳位后回写文本。
+
+### P2 实现决策（与原版差异，已与用户确认）
+
+1. **config.txt**：解析规则与原版一致；改进：无截断、64 条封顶（原版越界 bug）、剥 UTF-8 BOM、UTF-8 失败按 GBK 兜底（encoding_rs，依赖树已有）、名称/值 trim、空条目跳过；缺失/为空回退**原版式 1 条 loopback 预设**（用户确认），WSL2 4 预设移入随包 `etc/config.txt`。
+2. **CLI**：兼容原版全部 key（含 `--bandwidth-bandwidth`，另加别名 `--bandwidth-limit`）；新增 `--help`（i18n）、`--capture on|off`；非法参数 i18n 报错 + 提示（原版 exit(-1) 静默）；布尔 on/off 大小写不敏感；带参自动 Start 与 `--timeout N` 秒退出保留原版行为。
+3. **提权透传参数（修复原版 bug）**：原版 ShellExecuteEx 不带 lpParameters，提权重启后 CLI 参数静默丢失；我们取 GetCommandLineW 尾部（保留引号语义）原样传给 ShellExecuteW。
+4. **打包**：`script/package.ps1` 组装 exe + WinDivert.dll/sys + config.txt + LICENSE（LGPLv3）+ THIRD-PARTY-NOTICES（clumsy MIT）；release 开 strip + thin LTO；exe 图标/版本资源留待后续。
 
 ## 二、clumsy 源码架构分析（参考 `C:\Users\yyt0111\Downloads\clumsy-master\src`）
 
@@ -49,51 +82,67 @@
 
 ## 三、Rust 引擎设计（方案 B：全量重写）
 
-### 3.1 模块划分
+### 3.1 模块划分（已实现）
 
 ```
 src/engine/
-├── mod.rs          # Engine 主结构：start/stop、两线程（recv + clock）、consume step
-├── packet.rs       # Packet{data: Vec<u8>, addr: WinDivertAddress, timestamp}（已建）
+├── mod.rs          # Engine 主结构：start/stop、两线程（recv + clock）、consume step、send_all、now_ms
+├── packet.rs       # Packet{data: Vec<u8>, addr: WINDIVERT_ADDRESS, timestamp}
 ├── config.rs       # Arc 共享配置：每效果 enabled/inbound/outbound/参数（Atomic）
+├── ffi.rs          # windivert-sys 原生 FFI 薄封装（open/recv/send/close）
 └── effects/
-    ├── mod.rs      # 共享工具：check_direction / calc_chance（已建）
+    ├── mod.rs      # 共享工具：check_direction / calc_chance
     ├── lag.rs / drop.rs / throttle.rs / duplicate.rs / ood.rs
     ├── tamper.rs / reset.rs / bandwidth.rs
 ```
 
-- **线程模型**：沿用 C 版双线程（recv 阻塞线程 + 40ms clock 线程），队列用 `Mutex<VecDeque<Packet>>`；停启时用 AtomicBool 控制 + `WinDivert::close` 中断 recv（windivert 0.6.0 的 `WinDivertRecvError` 含 handle 关闭错误）
-- **winDivert API 要点**（windivert 0.6.0，已核实）：
-  - `WinDivert::network(filter, priority=0, WinDivertFlags::new())`
-  - `recv(&mut [u8])` → `WinDivertPacket{address: WinDivertAddress<NetworkLayer>, data: Cow<[u8]>}`，地址字段 `outbound()/loopback()` 等
-  - `send(&packet)` 回注；`set_param(QueueLength=2048, QueueTime=1024)` 沿用原版
-  - 校验和：`packet.recalculate_checksums(ChecksumFlags::new())`（tamper/reset 用；内部走 `WinDivertHelperCalcChecksums`）
-  - payload 解析（tamper 需要）：sys 层有 `WinDivertHelperParsePacket`（FFI）—— 包 `data` 需 owned 后取可变指针；或直接用 etherparse（windivert 0.6.0 内部依赖，recv_ex 用过）解析 IPv4/IPv6/TCP/UDP 头
-- **配置传递**：UI 线程写 `Arc<EffectConfig>`（每字段 AtomicU16/U32/Bool），引擎线程每个 consume step 读快照；`RST next packet` 用 `AtomicU16` 计数
+- **线程模型**：沿用 C 版双线程（recv 阻塞线程 + 40ms clock 线程），队列用 `Mutex<VecDeque<Packet>>`；停启用 AtomicBool 控制，clock 线程调 `WinDivertClose` 中断 recv（原生 HANDLE 跨线程共享，见上文决策 1）
+- **配置传递**：UI 线程写 `Arc<EngineConfig>`（每字段 Atomic），引擎线程每个 consume step 读快照；`RST next packet` 用 `AtomicU16` 计数（引擎 startup/closeDown 时清零）
+- **处理顺序**：lag → drop → throttle → duplicate → ood → tamper → reset → bandwidth（与 C main.c 一致）
+- **UI 结构**：`src/ui/main_window.rs`（主窗口 + 状态轮询）、`src/ui/effect_panel.rs`（效果行构建）、`src/ui/presets.rs`（4 个 8012 预设）
 
-### 3.2 待决策小项
+### 3.2 待决策小项（P0 已定）
 
-- [ ] 非 TCP/UDP 包（ICMP 等）在 tamper/reset 中的处理 —— 对齐 C 版：解析失败直接跳过
-- [ ] `sendState`（发送失败指示灯）与 `processTriggered`（模块触发指示灯）需要从引擎回传 UI —— 方案：`Arc<AtomicU16>` 位掩码 + UI 定时轮询，或 mpsc 事件通道
-- [ ] 统计显示（包速率/匹配数）—— 引擎原子计数，UI 每秒读取
+- [x] 非 TCP/UDP 包（ICMP 等）在 tamper/reset 中的处理 —— 对齐 C 版：解析失败直接跳过
+- [x] `sendState`（发送失败指示灯）与 `processTriggered`（模块触发指示灯）回传 UI —— **Atomic 位掩码 + UI 200ms 轮询**（已实现）
+- [x] 统计显示 —— P0 已做匹配包计数（AtomicU64）；包速率留 P1
 
 ## 四、实施顺序（后续任务）
 
-- [ ] **P0 引擎骨架**：engine/mod.rs（start/stop/consume）+ config.rs + 双线程 + 空跑（recv→send 原样回注）
-- [ ] **P0 效果模块**：按顺序逐个移植 8 个效果（drop → lag → throttle → duplicate → ood → tamper → reset → bandwidth），每个配 i18n 文案
-- [ ] **P0 UI 主窗口**：Filter 输入 + 预设下拉（config.txt 4 个 8012 预设迁移）+ Capture/Start 按钮 + 状态灯
-- [ ] **P0 效果面板**：8 组「开关 + 方向 Inbound/Outbound + 参数输入」行，布局参考原版
-- [ ] **P1 实时统计**：包速率/匹配数显示
-- [ ] **P1 指示灯**：模块触发/发送状态
-- [ ] **P2 config.txt 兼容**：exe 同目录加载预设（沿用原版格式 `name: value`）
-- [ ] **P2 参数化启动**：`--lag on --lag-time 50` 等（原版 parseArgs 行为）
-- [ ] **P2 打包发布**：release 构建 + WinDivert DLL/SYS 同目录分发
+- [x] **P0 引擎骨架**：engine/mod.rs（start/stop/consume）+ config.rs + 双线程 + 空跑（recv→send）
+- [x] **P0 效果模块**：按顺序逐个移植 8 个效果（drop → lag → throttle → duplicate → ood → tamper → reset → bandwidth），每个配 i18n 文案
+- [x] **P0 UI 主窗口**：Filter 输入 + 预设下拉（config.txt 4 个 8012 预设迁移）+ Capture/Start 按钮 + 状态灯
+- [x] **P0 效果面板**：8 组「开关 + 方向 Inbound/Outbound + 参数输入」行，布局参考原版
+- [x] **P1 实时统计**：包速率显示（滑动窗口；匹配数 P0 已有）——见「一、已完成」P1 行
+- [x] **P1 指示灯**：模块触发/发送状态（P0 已顺带实现）
+- [x] **P2 config.txt 兼容**：exe 同目录加载预设（沿用原版格式 `name: value`）——见「一、已完成」P2 行
+- [x] **P2 参数化启动**：`--lag on --lag-time 50` 等（原版 parseArgs 行为 + 增强）——见「一、已完成」P2 行
+- [x] **P2 打包发布**：release 构建 + WinDivert DLL/SYS 同目录分发（`script/package.ps1`）——见「一、已完成」P2 行
+- [ ] **P0 收尾**：实际运行验证（需管理员权限 + 真机流量测试：Drop/Lag 对 WebSocket 效果、Capture 计数增长）
+- [ ] **P3 设置页规则管理**：在设置页支持过滤器规则（预设）的新增 / 删除 / 修改 ——
+  - 编辑对象为 exe 同目录 config.txt 的 `name: value` 规则条目（与 presets.rs 加载逻辑打通，写回保持原版格式与注释兼容性需评估）
+  - UI 走设置页行卡片样式扩展：规则列表 + 新增按钮 + 每行编辑/删除动作；名称唯一性校验、过滤表达式合法性提示（可复用引擎的过滤器语法错误分类）
+  - 规则变更后刷新主界面预设 Select（SearchableVec 重建或增量更新）；i18n 文案进 `locales/ui.yml`
+  - 竞态注意：引擎运行中允许改规则，但已启动的过滤表达式不受影响（与原版语义一致：Start 时一次性生效）
 
-## 五、常用命令
+## 五、工程规范（后续开发一律遵守）
+
+1. **用户可见文案一律走 i18n**：禁止在代码里硬编码或拼接句子（包括冒号、单位、标点）；带变量的整句模板写进 `locales/ui.yml`，用 `t!(key, var = value)` 插值。数字/格式串（如输入回写）、元素 id、预设名（数据）不算文案。
+2. **模块按功能职责划分，高内聚低耦合**：
+   - `engine/mod.rs` = 引擎生命周期 + 双线程 + consume 管线（效果调度）
+   - `engine/send.rs` = 包回注（send_all + ICMP workaround）
+   - `engine/stats.rs` = CRateStats 速率统计（bandwidth 与全局包速率共用）
+   - `engine/effects/<effect>.rs` = 单个效果逻辑（state + startup/close_down/process）
+   - `engine/{config,ffi,packet}.rs` = 共享配置 / WinDivert FFI / 包数据类型
+   - `ui/` = 界面组件与窗口组装，不掺引擎逻辑；共享统计走 `EngineConfig` 原子 + UI 轮询
+
+## 六、常用命令
 
 ```powershell
-# 构建（每次需设置）
-$env:WINDIVERT_PATH = "D:\yyt_code\github_repos\Just_Vibe_Coding\netclumsy-gpui-app\windivert\WinDivert-2.2.2-A\x64"
+# 构建：WINDIVERT_PATH 已由 .cargo/config.toml 固化
+#（相对项目根 windivert/WinDivert-2.2.2-A/x64，force=true 覆盖 shell 残留值），无需手动设置
 cargo check    # 快速检查
-cargo run      # 运行（非管理员会触发 UAC 提权重启）
+cargo build    # 构建（target/debug/ 已放置 WinDivert.dll + WinDivert64.sys，可直接运行）
+cargo run      # 运行（非管理员会触发 UAC 提权重启；WinDivert 需要管理员）
+cargo test     # 引擎效果回归测试（lag 顺序、config/args 解析等）
 ```

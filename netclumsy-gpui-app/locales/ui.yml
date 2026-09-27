@@ -8,21 +8,132 @@ netclumsy:
   app.tagline:
     zh-CN: 网络包劣化工具
     en: Network Packet Degradation Tool
+  tab.degrade:
+    zh-CN: 劣化
+    en: Degrade
+  tab.about:
+    zh-CN: 关于
+    en: About
+  tab.settings:
+    zh-CN: 设置
+    en: Settings
+  settings.general:
+    zh-CN: 通用
+    en: General
+  settings.language:
+    zh-CN: 界面语言
+    en: Language
+  settings.language.desc:
+    zh-CN: 选择界面语言，更改需重启应用后生效
+    en: Interface language. Restart the app to apply changes.
+  settings.restart.title:
+    zh-CN: 需要重启
+    en: Restart Required
+  settings.restart.message:
+    zh-CN: "界面语言将在重启后切换为 %{language}，当前会话保持不变。"
+    en: "The interface language will switch to %{language} after restart. The current session is unaffected."
+  settings.restart.ok:
+    zh-CN: 知道了
+    en: Got it
+  notify.start_failed.title:
+    zh-CN: 启动失败
+    en: Start failed
+  notify.engine_exited.title:
+    zh-CN: 引擎异常停止
+    en: Engine stopped unexpectedly
+  notify.elevate_failed:
+    zh-CN: "提权失败：需要管理员权限才能加载 WinDivert 驱动（UAC 被取消或 ShellExecute 失败）。"
+    en: "elevation failed: Administrator rights are required to load the WinDivert driver (UAC cancelled or ShellExecute failed)."
+  about.app_name:
+    zh-CN: NetClumsy
+    en: NetClumsy
+  about.description:
+    zh-CN: 网络包劣化工具 · 基于 clumsy 重写
+    en: Network packet degradation tool · rewritten from clumsy
+  about.upstream:
+    zh-CN: 上游项目
+    en: Upstream
+  about.driver:
+    zh-CN: 网络驱动
+    en: Driver
+  about.framework:
+    zh-CN: UI 框架
+    en: UI framework
   window.capture:
     zh-CN: 捕获
     en: Capture
   window.start:
     zh-CN: 启动
     en: Start
+  window.stop:
+    zh-CN: 停止
+    en: Stop
+  window.start.tip:
+    zh-CN: 开始对匹配的数据包应用劣化
+    en: Start applying effects to matching packets
+  window.capture.tip:
+    zh-CN: 仅统计匹配数量，不修改数据包
+    en: Count matching packets without modifying them
+  window.stop.tip:
+    zh-CN: 停止过滤并回注缓冲的数据包
+    en: Stop filtering and flush buffered packets
+  window.presets:
+    zh-CN: 预设
+    en: Presets
   window.filter.label:
     zh-CN: 过滤器
     en: Filter
   window.filter.placeholder:
     zh-CN: 输入过滤表达式，如 tcp and tcp.DstPort == 8012
     en: e.g. tcp and tcp.DstPort == 8012
-  window.stats.rate:
+  send.ok:
+    zh-CN: 发送正常
+    en: Sending normally
+  send.fail:
+    zh-CN: 发送失败
+    en: Sending failed
+  send.idle:
+    zh-CN: 引擎未运行
+    en: Engine not running
+  window.admin.badge:
+    zh-CN: 管理员权限
+    en: Admin Privileges
+  single_instance.already_running:
+    zh-CN: 已经有一个 NetClumsy 实例在运行，请使用现有窗口。
+    en: Another NetClumsy instance is already running. Use the existing window.
+  window.admin.not_admin:
+    zh-CN: 非管理员权限
+    en: Not Admin
+  window.admin.dialog_message:
+    zh-CN: 未以管理员身份运行，过滤功能将无法生效。
+    en: Not running as administrator. Filtering will not work.
+  window.admin.later:
+    zh-CN: 稍后
+    en: Later
+  window.admin.now:
+    zh-CN: 立刻
+    en: Quit Now
+  window.admin.failed:
+    zh-CN: 引擎启动失败
+    en: Engine Failed
+  window.filter.readonly:
+    zh-CN: 只读 · 来自 config.txt
+    en: Read-only · from config.txt
+  window.theme.toggle:
+    zh-CN: 切换深浅主题
+    en: Toggle dark/light theme
+  stats.rate.label:
     zh-CN: 包速率
     en: Packet Rate
+  stats.rate.unit:
+    zh-CN: 包/秒
+    en: pkt/s
+  stats.matched.label:
+    zh-CN: 匹配包
+    en: Matched
+  window.stats.rate.format:
+    zh-CN: "包速率: %{rate} 包/秒"
+    en: "Packet Rate: %{rate} pkt/s"
   window.stats.matched:
     zh-CN: 匹配数
     en: Matched Count
@@ -32,20 +143,26 @@ netclumsy:
   window.direction.outbound:
     zh-CN: 出站
     en: Outbound
+  effect.led.idle:
+    zh-CN: 近 200ms 未触发
+    en: Not triggered in the last 200ms
+  effect.led.triggered:
+    zh-CN: 近 200ms 内触发过
+    en: Triggered within the last 200ms
   effect.lag:
-    zh-CN: 延迟 (Lag)
+    zh-CN: 延迟
     en: Lag
   effect.lag.delay:
     zh-CN: 延迟 (ms)
     en: Delay (ms)
   effect.drop:
-    zh-CN: 丢包 (Drop)
+    zh-CN: 丢包
     en: Drop
   effect.drop.chance:
     zh-CN: 概率 (%)
     en: Chance (%)
   effect.throttle:
-    zh-CN: 节流 (Throttle)
+    zh-CN: 节流
     en: Throttle
   effect.throttle.chance:
     zh-CN: 触发概率 (%)
@@ -57,13 +174,13 @@ netclumsy:
     zh-CN: 丢弃节流包
     en: Drop Throttled
   effect.bandwidth:
-    zh-CN: 限带宽 (Bandwidth)
+    zh-CN: 限带宽
     en: Bandwidth
   effect.bandwidth.limit:
     zh-CN: 上限 (KB/s)
     en: Limit (KB/s)
   effect.duplicate:
-    zh-CN: 重复 (Duplicate)
+    zh-CN: 重复
     en: Duplicate
   effect.duplicate.count:
     zh-CN: 份数
@@ -72,13 +189,13 @@ netclumsy:
     zh-CN: 概率 (%)
     en: Chance (%)
   effect.ood:
-    zh-CN: 乱序 (Out of order)
+    zh-CN: 乱序
     en: Out of order
   effect.ood.chance:
     zh-CN: 概率 (%)
     en: Chance (%)
   effect.tamper:
-    zh-CN: 篡改 (Tamper)
+    zh-CN: 篡改
     en: Tamper
   effect.tamper.chance:
     zh-CN: 概率 (%)
@@ -87,7 +204,7 @@ netclumsy:
     zh-CN: 重算校验和
     en: Redo Checksum
   effect.reset:
-    zh-CN: 断连 (Set TCP RST)
+    zh-CN: 断连
     en: Set TCP RST
   effect.reset.chance:
     zh-CN: 概率 (%)
@@ -95,12 +212,117 @@ netclumsy:
   effect.reset.now:
     zh-CN: RST 下一包
     en: RST Next Packet
-  status.requires_admin:
-    zh-CN: 需要管理员权限
-    en: Requires Administrator
-  status.running:
-    zh-CN: 运行中
-    en: Running
-  status.stopped:
-    zh-CN: 已停止
-    en: Stopped
+  status.engine_exited:
+    zh-CN: 引擎已异常停止：收包连续出错，已自动收尾并回注缓冲的数据包。
+    en: "Engine stopped unexpectedly: packet reception failed repeatedly; shutdown ran and buffered packets were flushed back."
+  status.start_failed.format:
+    zh-CN: "启动失败: %{error}"
+    en: "Failed to start: %{error}"
+  status.filter_syntax_error:
+    zh-CN: 过滤器语法错误
+    en: filter syntax error
+  status.open_device_failed.format:
+    zh-CN: "打开设备失败（请确认以管理员身份运行）(code: %{code})"
+    en: "failed to open device (make sure running as Administrator) (code: %{code})"
+  status.filter_invalid:
+    zh-CN: 过滤器含非法字符
+    en: filter contains invalid characters
+  status.thread_failed.format:
+    zh-CN: "创建线程失败: %{error}"
+    en: "Failed to create thread: %{error}"
+  status.matched.format:
+    zh-CN: "匹配包: %{count}"
+    en: "Matched: %{count}"
+  cli.help:
+    zh-CN: |-
+      NetClumsy 网络包劣化工具（Rust + GPUI，基于 clumsy 功能重写）
+
+      用法: netclumsy.exe [--key value]...
+
+      带任意参数启动时自动开始过滤（与原版 clumsy 一致）。
+
+      通用参数:
+        --filter <表达式>             初始过滤表达式
+        --timeout <秒>               运行指定秒数后自动退出
+        --capture on|off             启动后进入捕获（嗅探）模式，默认 off
+        --help                       显示本帮助
+
+      效果开关（on|off）:
+        --lag --drop --throttle --duplicate --ood --tamper --reset --bandwidth
+
+      方向开关（on|off）:
+        --<效果>-inbound             入站
+        --<效果>-outbound            出站
+
+      效果参数:
+        --lag-time <毫秒>            延迟时长 (0-15000)
+        --drop-chance <百分比>       丢包概率 (0-100)
+        --throttle-chance <百分比>   节流触发概率 (0-100)
+        --throttle-frame <毫秒>      节流时间窗 (0-1000)
+        --duplicate-chance <百分比>  重复概率 (0-100)
+        --duplicate-count <份数>     重复份数 (2-50)
+        --ood-chance <百分比>        乱序概率 (0-100)
+        --tamper-chance <百分比>     篡改概率 (0-100)
+        --tamper-checksum on|off     篡改后重算校验和
+        --reset-chance <百分比>      断连概率 (0-100)
+        --bandwidth-bandwidth <KB/s> 限带宽上限 (0-99999)，别名 --bandwidth-limit
+
+      示例:
+        netclumsy.exe --filter "tcp and tcp.DstPort == 8012" --lag on --lag-time 200
+        netclumsy.exe --drop on --drop-chance 20 --timeout 60
+        netclumsy.exe --capture on --filter "udp"
+    en: |-
+      NetClumsy network packet degradation tool (Rust + GPUI, rewritten from clumsy)
+
+      Usage: netclumsy.exe [--key value]...
+
+      Starting with any argument starts filtering automatically (same as original clumsy).
+
+      General options:
+        --filter <expression>         initial filter expression
+        --timeout <seconds>           auto-exit after the given seconds
+        --capture on|off              start in capture (sniff) mode instead, default off
+        --help                        show this help
+
+      Effect switches (on|off):
+        --lag --drop --throttle --duplicate --ood --tamper --reset --bandwidth
+
+      Direction switches (on|off):
+        --<effect>-inbound            inbound
+        --<effect>-outbound           outbound
+
+      Effect parameters:
+        --lag-time <ms>               lag delay (0-15000)
+        --drop-chance <percent>       drop probability (0-100)
+        --throttle-chance <percent>   throttle trigger probability (0-100)
+        --throttle-frame <ms>         throttle timeframe (0-1000)
+        --duplicate-chance <percent>  duplicate probability (0-100)
+        --duplicate-count <count>     duplicate copies (2-50)
+        --ood-chance <percent>        out-of-order probability (0-100)
+        --tamper-chance <percent>     tamper probability (0-100)
+        --tamper-checksum on|off      redo checksum after tamper
+        --reset-chance <percent>      reset probability (0-100)
+        --bandwidth-bandwidth <KB/s>  bandwidth limit (0-99999), alias --bandwidth-limit
+
+      Examples:
+        netclumsy.exe --filter "tcp and tcp.DstPort == 8012" --lag on --lag-time 200
+        netclumsy.exe --drop on --drop-chance 20 --timeout 60
+        netclumsy.exe --capture on --filter "udp"
+  cli.error.hint:
+    zh-CN: 使用 --help 查看用法。
+    en: Run with --help for usage.
+  cli.error.unknown_option:
+    zh-CN: "未知参数: %{option}"
+    en: "unknown option: %{option}"
+  cli.error.missing_value:
+    zh-CN: "参数缺少值: %{option}"
+    en: "missing value for option: %{option}"
+  cli.error.invalid_bool:
+    zh-CN: "参数 %{option} 的值无效（应为 on/off）: %{value}"
+    en: "invalid value for %{option} (expected on/off): %{value}"
+  cli.error.invalid_number:
+    zh-CN: "参数 %{option} 的值应为数字: %{value}"
+    en: "expected a number for %{option}: %{value}"
+  cli.error.elevate_failed:
+    zh-CN: "提权失败：需要管理员权限才能加载 WinDivert 驱动（UAC 被取消或 ShellExecute 失败）。"
+    en: "elevation failed: Administrator rights are required to load the WinDivert driver (UAC cancelled or ShellExecute failed)."
