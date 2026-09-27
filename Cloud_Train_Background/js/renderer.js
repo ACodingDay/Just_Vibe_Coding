@@ -40,11 +40,12 @@ function startCloudTrain(canvas, state, wakeRef, hooks) {
   }
   try {
     // 与源码一致：前景保留五次采样，但把时间展开压缩为三分之一
-    const scene = program(SHADER_FRAGMENT.replace('t+4.*float(i)/float(n)/60.', 't+(4./3.)*float(i)/float(n)/60.'));
+    // shader 按当前主题构建（boot 时 settings.theme 已定），该替换作用于共享 mainHead
+    const scene = program(buildFragment(state.current.theme).replace('t+4.*float(i)/float(n)/60.', 't+(4./3.)*float(i)/float(n)/60.'));
     const post = program(SHADER_IMAGE);
     const locations = (p, names) => Object.fromEntries(names.map(k => [k, gl.getUniformLocation(p, k)]));
     // uniform 清单由当前主题描述符提供，行为与原硬编码列表一致
-    const theme = getCloudTrainTheme();
+    const theme = getCloudTrainTheme(state.current.theme);
     const tintKeys = theme.tintUniforms;
     const a = locations(scene, [...theme.sceneUniforms, ...tintKeys]);
     const b = locations(post, ['resolution','scene','vignette','exposure','saturation','hue','temperature','intro','introFeather']);
@@ -124,7 +125,8 @@ function startCloudTrain(canvas, state, wakeRef, hooks) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbos[write] ?? null); gl.useProgram(scene);
       gl.uniform1i(a.iChannel1, read + 1);
       for (const key of tintKeys) tint(a[key], s[key]);
-      scalar(a.zoom, s.zoom); scalar(a.offset, s.offset); scalar(a.amplitude, s.amplitude); scalar(a.uDetail, s.detail);
+      // 参数 uniform 由主题描述符声明映射（全局 zoom/offset 与主题专属参数同机制）
+      for (const [u, key] of theme.paramUniforms) scalar(a[u], s[key]);
       scalar(a.intro, introProgress); scalar(a.introFeather, s.introFeather); scalar(a.iTime, time);
       scalar(a.uFeedback, history && introProgress >= 1 ? s.feedback : 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);

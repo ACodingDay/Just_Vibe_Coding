@@ -17,14 +17,15 @@
     css/panel.css   — 设置面板与控件样式
     css/picker.css  — 内嵌取色器样式
     css/modal.css   — 重置确认弹窗样式
-    js/config.js         — 设置默认值、控件定义、localStorage 存取与迁移
     js/themes/subject-train.js — 共享主体块（列车+烟雾+桥）与 mainImage 骨架/公共函数
-    js/themes/clouds.js        — 云海主题描述符（场景 + 染色/开场组装配方 + uniform 清单）
+    js/themes/clouds.js        — 云海主题描述符（场景 + 专属参数表 + 染色/开场组装配方）
+    js/themes/ocean.js         — 大海主题描述符（Dave the Diver 风格平涂色带海面，原创 shader）
     js/themes/registry.js      — 主题注册表与 getCloudTrainTheme
+    js/config.js         — 全局设置、主题专属表汇总、localStorage 存取与 v1→v2 迁移
     js/shader-source.js  — 原始 shader 源码常量（SHADER_ORIGINAL 由主题拼块组装，仅供 verify 校验）
-    js/shader-build.js   — shader 组装入口：由主题 assemblyFn 产出最终片元着色器
+    js/shader-build.js   — shader 组装入口：buildFragment(themeId) 经主题 assemblyFn 产出最终片元着色器
     js/renderer.js       — WebGL 2 渲染器（CloudTrainRenderer 的纯 JS 版）
-    js/panel.js          — 设置面板构建、同步与按钮逻辑
+    js/panel.js          — 主题选择器、设置面板构建、同步与按钮逻辑
     js/picker.js         — 自定义取色器（HSV 面板 + 吸管）
     js/main.js           — 装配入口（boot）
 -->
@@ -47,6 +48,10 @@
     <button id="panel-toggle" aria-label="折叠/展开设置面板">▾</button>
   </div>
   <div id="panel-body">
+    <div class="row theme-row">
+      <label for="ctl-theme"><span class="zh">背景主题</span></label>
+      <select id="ctl-theme" aria-label="选择背景主题"></select>
+    </div>
     <fieldset id="controls"><legend>列车与云海</legend></fieldset>
     <div id="picker" hidden>
       <div class="picker-head">
@@ -95,11 +100,12 @@
   </div>
 </div>
 
-<!-- 加载顺序有依赖：config → 主题拼块/描述符/注册表 → shader 源码 → shader 组装 → 渲染器 → 面板/取色器 → 入口 -->
-<script src="js/config.js"></script>
+<!-- 加载顺序有依赖：主题拼块/描述符/注册表 → config（汇总主题专属表）→ shader 源码 → 组装 → 渲染器 → 面板/取色器 → 入口 -->
 <script src="js/themes/subject-train.js"></script>
 <script src="js/themes/clouds.js"></script>
+<script src="js/themes/ocean.js"></script>
 <script src="js/themes/registry.js"></script>
+<script src="js/config.js"></script>
 <script src="js/shader-source.js"></script>
 <script src="js/shader-build.js"></script>
 <script src="js/renderer.js"></script>

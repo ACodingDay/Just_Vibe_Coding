@@ -221,11 +221,21 @@ float openingLayer(float start) {
 const THEME_CLOUDS = {
   id: 'clouds',
   name: '云海',
+  // 页头/标签页标题（跟随主题切换）
+  title: '云间列车 · Cloud Train',
   scene: GLSL_CLOUDS_SCENE,
   // 场景 shader 使用的 uniform 清单（renderer 据此绑定）
   sceneUniforms: ['iResolution', 'iTime', 'iChannel0', 'iChannel1', 'uFeedback', 'zoom', 'offset', 'amplitude', 'uDetail', 'intro', 'introFeather'],
+  // 由 settings 逐帧驱动的 uniform：[uniform 名, settings 键名]（renderer 据此推送）
+  paramUniforms: [['zoom', 'zoom'], ['offset', 'offset'], ['amplitude', 'amplitude'], ['uDetail', 'detail']],
+  // 云海专属滑杆参数表 [键名, 标签, min, max, step]
+  controls: [["amplitude", "云层起伏", 0, 2, .01], ["detail", "噪声细节", 1, 8, 1]],
   // 染色 uniform 清单（键名与 settings 中的颜色设置一一对应）
   tintUniforms: ['skyTint', 'smokeTint', 'trainTint'],
+  // 染色面板行 [键名, 标签]
+  tints: [["skyTint", "天空染色"], ["smokeTint", "烟雾染色"], ["trainTint", "列车染色"]],
+  // 主题专属参数出厂值
+  defaults: { amplitude: .6, detail: 8, skyTint: "#94b3ff", smokeTint: "#ffffff", trainTint: "#7a3033" },
   // 云海专属组装配方：拼块 → 直选色染色 → 开场分层揭示 → 注入动态 uniform 与 main 入口
   assemblyFn(parts) {
     const source = parts.helpers + parts.scene + parts.mainHead + parts.subject + parts.mainTail;

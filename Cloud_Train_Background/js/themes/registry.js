@@ -3,7 +3,7 @@
 // ============================================================
 'use strict';
 
-const CLOUD_TRAIN_THEMES = [THEME_CLOUDS];
+const CLOUD_TRAIN_THEMES = [THEME_CLOUDS, THEME_OCEAN];
 
 // 无参或未知 id 时回落到云海主题
 function getCloudTrainTheme(id) {

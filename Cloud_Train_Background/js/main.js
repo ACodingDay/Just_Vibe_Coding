@@ -14,6 +14,10 @@ function boot() {
   if (cleanup) { cleanup(); cleanup = undefined; }
   errBox.style.display = 'none';
   panel.classList.remove('shown'); // 开场动画期间隐藏面板，播完再淡入
+  // 页头与标签页标题跟随主题（副标题为原项目署名，保持不变）
+  const themeTitle = getCloudTrainTheme(settings.theme).title;
+  document.querySelector('header h1').textContent = themeTitle;
+  document.title = themeTitle + ' — Code-Codex 背景插件独立测试';
   try {
     cleanup = startCloudTrain(canvas, { current: settings }, wakeRef, {
       onIntroDone: () => panel.classList.add('shown'),
