@@ -51,11 +51,11 @@
 
 > 网络包劣化工具（clumsy 重写版）
 
-功能参考自 [jagt/clumsy](https://github.com/jagt/clumsy)，使用 **Rust + GPUI** 全量重写的 Windows 网络包劣化工具（中文界面），基于 WinDivert 内核驱动模拟延迟、丢包、节流、限带宽、重复、乱序、篡改、断连等网络状况，用于测试应用的网络容错能力。
+功能参考自 [jagt/clumsy](https://github.com/jagt/clumsy)，使用 **Rust + gpui-kit** 全量重写的 Windows 网络包劣化工具，基于 WinDivert 内核驱动模拟延迟、丢包、节流、限带宽、重复、乱序、篡改、断连等网络状况，用于测试应用的网络容错能力。支持中英双语切换（设置页持久化）、捕获模式与命令行参数化启动。
 
 | 技术栈 | 平台 | 状态 |
 |--------|------|------|
-| Rust + GPUI + gpui-component + windivert | Windows | 🔨 开发中 |
+| Rust + gpui-kit + windivert-sys | Windows | ✅ 可用 |
 
 ---
 
