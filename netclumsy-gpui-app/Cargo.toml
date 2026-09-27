@@ -1,6 +1,6 @@
 [package]
 name = "netclumsy"
-version = "20260927.0.0"
+version = "0.1.0"
 edition = "2024"
 
 [dependencies]
