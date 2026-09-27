@@ -1,2 +1,6 @@
+# windivert-sys 构建脚本读取 WINDIVERT_PATH 定位 WinDivert.lib/dll/sys。
+# 必须指向包含 x64 产物文件的目录（lib 在 x64/ 子目录，不在压缩包根目录）。
+# relative = true：相对本配置文件所在 .cargo 目录的上级（即项目根）解析。
+# force = true：始终覆盖 shell 里可能残留的旧值（如误指向压缩包根目录）。
 [env]
-WINDIVERT_PATH = { value = "windivert/WinDivert-2.2.2-A/x64", relative = true }
+WINDIVERT_PATH = { value = "windivert/WinDivert-2.2.2-A/x64", relative = true, force = true }

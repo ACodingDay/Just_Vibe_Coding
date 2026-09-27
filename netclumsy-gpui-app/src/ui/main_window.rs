@@ -9,13 +9,10 @@ use std::time::Duration;
 
 use gpui_kit::*;
 use gpui_kit::component::button::{Button, ButtonVariants};
-use gpui_kit::component::description_list::DescriptionList;
 use gpui_kit::component::dialog::{DialogAction, DialogClose, DialogFooter};
 use gpui_kit::component::input::{InputEvent, InputState};
-use gpui_kit::component::kbd::Kbd;
-use gpui_kit::component::link::Link;
 use gpui_kit::component::notification::Notification;
-use gpui_kit::component::select::{SearchableVec, SelectEvent, SelectState};
+use gpui_kit::component::select::{Select, SearchableVec, SelectEvent, SelectState};
 use gpui_kit::component::tab::{Tab, TabBar};
 use gpui_kit::component::tag::Tag;
 use gpui_kit::component::{h_flex, v_flex, ActiveTheme as _, Icon, IconName, IndexPath, Root, Sizable as _, WindowExt as _};
@@ -25,6 +22,7 @@ use crate::args::ParsedArgs;
 use crate::elevate::is_admin_for_ui;
 use crate::engine::{Engine, EngineConfig, EngineError, EngineMode};
 use crate::presets::Preset;
+use crate::settings::{self, AppSettings};
 use crate::ui::inputs::{self, EffectInputs};
 use crate::ui::stats_bar::RateHistory;
 use crate::ui::{effect_panel, filter_bar, stats_bar, theme, title_bar};
@@ -40,8 +38,11 @@ pub struct MainWindow {
     pub(crate) config: Arc<EngineConfig>,
     pub(crate) engine: Option<Engine>,
     pub(crate) presets: Vec<Preset>,
+    /// 启动时已生效的应用设置（语言变更只写文件，运行态不动，重启后生效）
+    pub(crate) settings: Arc<AppSettings>,
     pub(crate) filter_input: Entity<InputState>,
     pub(crate) preset_select: Entity<SelectState<SearchableVec<SharedString>>>,
+    pub(crate) language_select: Entity<SelectState<SearchableVec<SharedString>>>,
     pub(crate) lag_time_input: Entity<InputState>,
     pub(crate) drop_chance_input: Entity<InputState>,
     pub(crate) throttle_chance_input: Entity<InputState>,
@@ -70,6 +71,7 @@ impl MainWindow {
         config: Arc<EngineConfig>,
         presets: Vec<Preset>,
         parsed: ParsedArgs,
+        settings: Arc<AppSettings>,
     ) -> Self {
         let default_filter = presets.first().map_or(String::new(), |p| p.filter.clone());
         let filter_input = cx.new(|cx| {
@@ -84,6 +86,22 @@ impl MainWindow {
             SelectState::new(
                 SearchableVec::new(preset_items),
                 Some(IndexPath::default()),
+                window,
+                cx,
+            )
+            .searchable(true)
+        });
+
+        // 语言 Select：展示名固定用语言自称（不随 locale 翻译），初始选中 =
+        // 启动时已生效的语言；带搜索能力（Select 的 searchable 模式）
+        let language_items: Vec<SharedString> = settings::LANGUAGES
+            .iter()
+            .map(|(name, _)| SharedString::from(*name))
+            .collect();
+        let language_select = cx.new(|cx| {
+            SelectState::new(
+                SearchableVec::new(language_items),
+                Some(IndexPath::new(settings::language_index(&settings.language))),
                 window,
                 cx,
             )
@@ -113,6 +131,49 @@ impl MainWindow {
                         this.filter_input
                             .update(cx, |s, cx| s.set_value(expr, window, cx));
                     }
+                }
+            },
+        ));
+
+        // 语言变更：选择即持久化到 settings.json；与已生效语言不同时弹窗提示
+        // 重启（选回原语言 = 撤销未生效的变更，静默还原）。语言不即时切换。
+        subscriptions.push(cx.subscribe_in(
+            &language_select,
+            window,
+            |this: &mut Self, _, event: &SelectEvent<SearchableVec<SharedString>>, window, cx| {
+                let SelectEvent::Confirm(Some(name)) = event else {
+                    return;
+                };
+                let name: &str = name.as_str();
+                let Some((_, code)) = settings::LANGUAGES
+                    .iter()
+                    .find(|(n, _)| *n == name)
+                else {
+                    return;
+                };
+                AppSettings {
+                    language: (*code).to_string(),
+                }
+                .save();
+                if *code != this.settings.language {
+                    let message: SharedString =
+                        t!("netclumsy.settings.restart.message", language = name)
+                            .into_owned()
+                            .into();
+                    window.open_dialog(cx, move |dialog, _, _| {
+                        dialog
+                            .title(t!("netclumsy.settings.restart.title").into_owned())
+                            .child(div().child(message.clone()))
+                            .footer(
+                                DialogFooter::new().child(
+                                    DialogClose::new().child(
+                                        Button::new("btn-restart-ok")
+                                            .primary()
+                                            .label(t!("netclumsy.settings.restart.ok").into_owned()),
+                                    ),
+                                ),
+                            )
+                    });
                 }
             },
         ));
@@ -201,8 +262,10 @@ impl MainWindow {
             config,
             engine: None,
             presets,
+            settings,
             filter_input,
             preset_select,
+            language_select,
             lag_time_input,
             drop_chance_input,
             throttle_chance_input,
@@ -468,13 +531,62 @@ impl MainWindow {
             .child(stats_bar::render(self, cx))
     }
 
-    /// 配置页（脚手架）：仅占位空白，后续在此实现 config.txt 的 Tab 内编辑
-    /// 并保存（AGENTS.md 路线图；届时同步放开过滤输入框的 readonly 限制）
-    fn render_config_page(&self, _cx: &Context<Self>) -> impl IntoElement {
-        v_flex().flex_1()
+    /// 设置页：整页滚动的表单式布局——分区标题 + 设置行卡片（主流软件
+    /// 设置页样式）；新设置项在下方追加行，行结构 = 左侧「标签 + 说明」、
+    /// 右侧控件。
+    fn render_settings_page(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
+        v_flex()
+            .id("settings-scroll")
+            .flex_1()
+            .min_h(rems(0.))
+            .overflow_y_scroll()
+            .gap_4()
+            .p_4()
+            .child(
+                div()
+                    .text_sm()
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .child(t!("netclumsy.settings.general").into_owned()),
+            )
+            .child(
+                div()
+                    .id("setting-row-language")
+                    .border_1()
+                    .border_color(cx.theme().border)
+                    .rounded_lg()
+                    .p_4()
+                    .bg(cx.theme().secondary)
+                    .child(
+                        h_flex()
+                            .items_center()
+                            .justify_between()
+                            .gap_4()
+                            .child(
+                                v_flex()
+                                    .gap_1()
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .child(t!("netclumsy.settings.language").into_owned()),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(cx.theme().muted_foreground)
+                                            .child(
+                                                t!("netclumsy.settings.language.desc")
+                                                    .into_owned(),
+                                            ),
+                                    ),
+                            )
+                            .child(
+                                div().w(rems(15.)).child(Select::new(&self.language_select)),
+                            ),
+                    ),
+            )
     }
 
-    /// 关于页：标题区（应用名 + 版本）+ 快捷键 + 项目信息
+    /// 关于页：标题区（应用名 + 版本）+ 竖排项目信息
     fn render_about_page(&self, cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
             .flex_1()
@@ -484,8 +596,7 @@ impl MainWindow {
             .px_4()
             .py_8()
             .child(self.render_about_header(cx))
-            .child(shortcut_group(cx))
-            .child(project_list())
+            .child(project_list(cx))
     }
 
     /// 标题区：应用名 + 版本章（Tag）+ 一句话描述
@@ -520,64 +631,47 @@ impl MainWindow {
     }
 }
 
-/// 关于页快捷键区：展示行标签 + Kbd 按键章。
-/// 按键串必须与 main.rs bind_keys 的注册一致（改绑定要同步这里）。
-fn shortcut_group(cx: &Context<MainWindow>) -> AnyElement {
-    let rows = [
-        (t!("netclumsy.window.start").into_owned(), "f5"),
-        (t!("netclumsy.window.capture").into_owned(), "f6"),
-        (t!("netclumsy.window.stop").into_owned(), "shift-f5"),
+/// 关于页项目信息区：条目竖排（每组左侧说明、右侧链接），组内两端对齐；
+/// 链接用 link 变体按钮承载，点击经 cx.open_url 打开（同 Link 组件内部行为）
+fn project_list(cx: &Context<MainWindow>) -> AnyElement {
+    let items = [
+        (
+            t!("netclumsy.about.upstream").into_owned(),
+            "clumsy (MIT)",
+            "https://github.com/jagt/clumsy",
+        ),
+        (
+            t!("netclumsy.about.driver").into_owned(),
+            "WinDivert",
+            "https://reqrypt.org/windivert.html",
+        ),
+        (
+            t!("netclumsy.about.framework").into_owned(),
+            "gpui-kit",
+            "https://github.com/longbridge/gpui-kit",
+        ),
     ];
     v_flex()
-        .w(rems(20.))
-        .gap_1p5()
-        .child(
-            div()
-                .text_xs()
-                .text_color(cx.theme().muted_foreground)
-                .child(t!("netclumsy.about.shortcuts").into_owned()),
-        )
-        .children(rows.into_iter().map(|(label, keys)| {
+        .w(rems(16.))
+        .gap_3()
+        .children(items.into_iter().enumerate().map(|(i, (label, name, href))| {
+            let url = SharedString::from(href);
             h_flex()
                 .items_center()
                 .justify_between()
-                .child(div().text_sm().child(label))
-                .child(Kbd::new(Keystroke::parse(keys).expect("内置快捷键串必须可解析")))
+                .child(
+                    div()
+                        .text_sm()
+                        .text_color(cx.theme().muted_foreground)
+                        .child(label),
+                )
+                .child(
+                    Button::new(SharedString::from(format!("btn-about-link-{i}")))
+                        .link()
+                        .label(name)
+                        .on_click(move |_, _, cx| cx.open_url(&url)),
+                )
         }))
-        .into_any_element()
-}
-
-/// 关于页项目信息区：上游项目 / 网络驱动 / UI 框架（DescriptionList + Link）
-fn project_list() -> AnyElement {
-    DescriptionList::new()
-        .label_width(rems(6.5))
-        .item(
-            t!("netclumsy.about.upstream").into_owned(),
-            Link::new("link-clumsy")
-                .href("https://github.com/jagt/clumsy")
-                .text_sm()
-                .child("clumsy (MIT)")
-                .into_any_element(),
-            1,
-        )
-        .item(
-            t!("netclumsy.about.driver").into_owned(),
-            Link::new("link-windivert")
-                .href("https://reqrypt.org/windivert.html")
-                .text_sm()
-                .child("WinDivert")
-                .into_any_element(),
-            1,
-        )
-        .item(
-            t!("netclumsy.about.framework").into_owned(),
-            Link::new("link-gpui-kit")
-                .href("https://github.com/longbridge/gpui-kit")
-                .text_sm()
-                .child("gpui-kit")
-                .into_any_element(),
-            1,
-        )
         .into_any_element()
 }
 
@@ -637,7 +731,7 @@ impl Render for MainWindow {
                                 cx.notify();
                             }))
                             .child(Tab::new().label(t!("netclumsy.tab.degrade").into_owned()))
-                            .child(Tab::new().label(t!("netclumsy.tab.config").into_owned()))
+                            .child(Tab::new().label(t!("netclumsy.tab.settings").into_owned()))
                             .child(Tab::new().label(t!("netclumsy.tab.about").into_owned())),
                     )
                     .child(div().flex_1())
@@ -660,7 +754,7 @@ impl Render for MainWindow {
             // ③ 页面内容（按 active_tab 分发；统计栏属于劣化页，见 render_degrade_page）
             .child(match self.active_tab {
                 0 => self.render_degrade_page(cx).into_any_element(),
-                1 => self.render_config_page(cx).into_any_element(),
+                1 => self.render_settings_page(cx).into_any_element(),
                 _ => self.render_about_page(cx).into_any_element(),
             })
             // ④ 模态层（Dialog / Sheet / Notification），必须挂在内容之上

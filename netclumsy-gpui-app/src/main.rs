@@ -8,6 +8,7 @@ mod assets;
 mod elevate;
 mod engine;
 mod presets;
+mod settings;
 mod single_instance;
 mod ui;
 
@@ -34,7 +35,12 @@ fn main() {
     unsafe {
         let _ = windows::Win32::System::Console::SetConsoleOutputCP(65001);
     }
-    rust_i18n::set_locale("zh-CN");
+
+    // 启动即读设置（exe 同目录 settings.json，缺失/损坏回退默认 English）：
+    // 语言在提权解析前就位，CLI 错误文案与 GUI 共用同一 locale
+    let settings = Arc::new(settings::AppSettings::load());
+    debug_log(&format!("settings loaded: language={}", settings.language));
+    rust_i18n::set_locale(&settings.language);
 
     // 解析命令行（原版 clumsy parseArgs 兼容 + 增强；提权前解析，
     // 提权重启由 elevate_self 透传参数，修复原版丢参 bug）
@@ -94,8 +100,8 @@ fn main() {
     let app = gpui_kit::application().with_assets(Assets);
 
     app.run(move |cx| {
-        gpui_kit::component::set_locale("zh-CN");
-        rust_i18n::set_locale("zh-CN");
+        gpui_kit::component::set_locale(&settings.language);
+        rust_i18n::set_locale(&settings.language);
         gpui_kit::init(cx);
         // 注册深/浅两套 seed token 主题，默认深色（design/DESIGN.md §4）
         ui::theme::init(cx);
@@ -126,7 +132,8 @@ fn main() {
                     ..Default::default()
                 },
                 move |window, cx| {
-                    let view = cx.new(|cx| MainWindow::new(window, cx, config, presets, parsed));
+                    let view =
+                        cx.new(|cx| MainWindow::new(window, cx, config, presets, parsed, settings));
                     cx.new(|cx| Root::new(view, window, cx))
                 },
             )?;

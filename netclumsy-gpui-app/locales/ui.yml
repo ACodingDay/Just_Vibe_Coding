@@ -14,9 +14,27 @@ netclumsy:
   tab.about:
     zh-CN: 关于
     en: About
-  tab.config:
-    zh-CN: 配置
-    en: Config
+  tab.settings:
+    zh-CN: 设置
+    en: Settings
+  settings.general:
+    zh-CN: 通用
+    en: General
+  settings.language:
+    zh-CN: 界面语言
+    en: Language
+  settings.language.desc:
+    zh-CN: 选择界面语言，更改需重启应用后生效
+    en: Interface language. Restart the app to apply changes.
+  settings.restart.title:
+    zh-CN: 需要重启
+    en: Restart Required
+  settings.restart.message:
+    zh-CN: "界面语言将在重启后切换为 %{language}，当前会话保持不变。"
+    en: "The interface language will switch to %{language} after restart. The current session is unaffected."
+  settings.restart.ok:
+    zh-CN: 知道了
+    en: Got it
   notify.start_failed.title:
     zh-CN: 启动失败
     en: Start failed
@@ -32,9 +50,6 @@ netclumsy:
   about.description:
     zh-CN: 网络包劣化工具 · 基于 clumsy 重写
     en: Network packet degradation tool · rewritten from clumsy
-  about.shortcuts:
-    zh-CN: 快捷键
-    en: Shortcuts
   about.upstream:
     zh-CN: 上游项目
     en: Upstream
