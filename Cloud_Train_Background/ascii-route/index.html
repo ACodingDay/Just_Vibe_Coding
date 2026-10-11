@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>云间列车 · Cloud Train（ASCII 路线） — Code-Codex 背景插件独立测试</title>
+<!--
+  ASCII 路线平行版本：本目录由主目录复刻而来，主目录代码原样保留作对比参考。
+  与主版本的差异（方案与评估见本目录 README.md）：
+    P1  渲染粒度与显示分辨率解耦——场景 shader / 反馈 FBO / iResolution
+        绑定「字符格网格」（js/renderer.js，格 8×16 CSS px），本阶段输出端
+        暂以原后处理把网格 FBO 线性放大到屏幕，画面呈马赛克块属预期；
+    P2~P4  字形图集 → 字形放大 pass → 面板控制（格子尺寸/梯度/颜色模式/帧率）。
+  页头第二行显示当前网格尺寸（hooks.onStats），供验证解耦行为。
+
+  渲染核心与 shader 组装逻辑原样提取自
+  packages/explorer-ui/src/explorer-element.ts（commit 0902983a），
+  原始 shader 作者是 mdb（源项目注释："Original supplied shader credited to mdb.
+  No redistribution license was supplied."），请勿再分发。
+
+  按职责拆分的文件结构（未注明者与主目录同名文件逐字节一致）：
+    css/base.css    — 全局 reset、画布、页头
+    css/panel.css   — 设置面板与控件样式
+    css/picker.css  — 内嵌取色器样式
+    css/modal.css   — 重置确认弹窗样式
+    js/themes/subject-train.js — 共享主体块（列车+烟雾+桥）与 mainImage 骨架/公共函数
+    js/themes/clouds.js        — 云海主题描述符（场景 + 专属参数表 + 染色/开场组装配方）
+    js/themes/ocean.js         — 大海主题描述符（Dave the Diver 风格平涂色带海面，原创 shader）
+    js/themes/registry.js      — 主题注册表与 getCloudTrainTheme
+    js/config.js         — 设置定义与存取（ASCII 版：独立存储键 + 格子尺寸/梯度/颜色模式/帧率上限）
+    js/shader-source.js  — shader 源码常量（SHADER_ORIGINAL 仅供 verify 校验；SHADER_ASCII_IMAGE 为 P3 字形输出 pass）
+    js/shader-build.js   — shader 组装入口：buildFragment(themeId) 经主题 assemblyFn 产出最终片元着色器
+    js/ascii-atlas.js    — 字形图集生成器（P2：字符梯度/预设表 → R8 覆盖度图集，P3 字形 pass 消费）
+    js/renderer.js       — WebGL 2 渲染器（ASCII 版：场景绑字符格网格 + 字形 pass + 按需重建图集 + 帧率上限）
+    js/panel.js          — 设置面板（ASCII 版：滑杆行 + 下拉行构建、同步与按钮逻辑）
+    js/picker.js         — 自定义取色器（HSV 面板 + 吸管）
+    js/main.js           — 装配入口（boot；标题标识 + 网格尺寸读出）
+-->
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/panel.css">
+<link rel="stylesheet" href="css/picker.css">
+<link rel="stylesheet" href="css/modal.css">
+</head>
+<body>
+<canvas id="cloud-train"></canvas>
+
+<header>
+  <h1>云间列车 · Cloud Train</h1>
+  <p>原项目: Rice-dog/code-codex</p>
+  <p id="grid-info"></p>
+</header>
+
+<aside id="panel">
+  <div id="panel-head">
+    <div><b>云间列车设置</b></div>
+    <button id="panel-toggle" aria-label="折叠/展开设置面板">▾</button>
+  </div>
+  <div id="panel-body">
+    <div class="row theme-row">
+      <label for="ctl-theme"><span class="zh">背景主题</span></label>
+      <select id="ctl-theme" aria-label="选择背景主题"></select>
+    </div>
+    <fieldset id="controls"><legend>列车与云海</legend></fieldset>
+    <div id="picker" hidden>
+      <div class="picker-head">
+        <b id="picker-title">调整颜色</b>
+        <button id="picker-close" title="关闭（放弃本次修改）" aria-label="关闭取色器">
+          <svg viewBox="0 0 16 16" width="12" height="12"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div id="picker-sv"><div id="picker-dot"></div></div>
+      <div class="picker-mid">
+        <button id="picker-eyedropper" title="从屏幕取色" aria-label="从屏幕取色">
+          <svg viewBox="0 0 16 16" width="14" height="14"><path d="M11.2 1.6l3.2 3.2-7.8 7.8L3 14l1.4-3.6ZM9.6 3.2l3.2 3.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+        </button>
+        <div id="picker-swatch"></div>
+        <input type="range" id="picker-hue" min="0" max="360" step="1" aria-label="色相">
+      </div>
+      <div class="picker-bottom">
+        <div class="ch"><input type="number" id="picker-r" min="0" max="255">R</div>
+        <div class="ch"><input type="number" id="picker-g" min="0" max="255">G</div>
+        <div class="ch"><input type="number" id="picker-b" min="0" max="255">B</div>
+        <button id="picker-ok">确认</button>
+      </div>
+    </div>
+    <fieldset id="tint-controls"><legend>染色（默认色即原画配色）</legend></fieldset>
+    <label class="toggle-row"><input type="checkbox" id="ctl-introEnabled" checked>启用开场动画</label>
+    <label class="toggle-row"><input type="checkbox" id="ctl-paused">暂停动画</label>
+    <label class="toggle-row"><input type="checkbox" id="ctl-ignoreReducedMotion">忽略系统「减少动态效果」</label>
+    <label class="toggle-row"><input type="checkbox" id="ctl-asciiDither" checked>字级抖动（拜耳有序抖动，渐变更平滑）</label>
+    <p id="rm-hint" hidden>检测到系统开启了「减少动态效果」，动画已被冻结。勾选上方选项可强制播放；也可在 Windows 设置 → 辅助功能 → 视觉效果 → 动画效果 中开启。</p>
+    <div class="actions">
+      <button id="btn-reset">一键重置</button>
+      <button id="btn-save">记住当前设置</button>
+      <button id="btn-replay">重播</button>
+    </div>
+    <p id="err"></p>
+  </div>
+</aside>
+
+<div id="modal-mask" hidden>
+  <div id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-text">
+    <p id="modal-text">回到初始化参数的状态？</p>
+    <small>将清除已记录的个性化设置</small>
+    <div class="modal-actions">
+      <button id="modal-cancel">取消</button>
+      <button id="modal-ok">确认重置</button>
+    </div>
+  </div>
+</div>
+
+<!-- 加载顺序有依赖：主题拼块/描述符/注册表 → config（汇总主题专属表）→ shader 源码 → 组装 → 渲染器 → 面板/取色器 → 入口 -->
+<script src="js/themes/subject-train.js"></script>
+<script src="js/themes/clouds.js"></script>
+<script src="js/themes/ocean.js"></script>
+<script src="js/themes/registry.js"></script>
+<script src="js/config.js"></script>
+<script src="js/shader-source.js"></script>
+<script src="js/shader-build.js"></script>
+<script src="js/ascii-atlas.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/panel.js"></script>
+<script src="js/picker.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+/* ============================================================
+ * base.css — 全局 reset、页面背景、画布与页头
+ * ============================================================ */
+:root { color-scheme: dark; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #05090c; }
+body { font: 13px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: #dfe9f2; }
+
+#cloud-train { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+
+header {
+  position: fixed; top: 14px; left: 16px; z-index: 2; pointer-events: none;
+  text-shadow: 0 1px 4px rgba(0,0,0,.6);
+}
+header h1 { font-size: 15px; font-weight: 600; letter-spacing: .02em; }
+header p { font-size: 11px; opacity: .72; margin-top: 2px; }

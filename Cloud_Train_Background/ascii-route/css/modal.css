@@ -1,0 +1,25 @@
+/* ============================================================
+ * modal.css — 「一键重置」确认弹窗：居中遮罩 + 对话框
+ * ============================================================ */
+#modal-mask {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.45); backdrop-filter: blur(3px);
+}
+#modal-mask[hidden] { display: none; }
+#modal {
+  background: rgba(16, 24, 32, .94); border: 1px solid rgba(255,255,255,.14);
+  border-radius: 14px; padding: 20px 22px 18px; text-align: center;
+  box-shadow: 0 12px 40px rgba(0,0,0,.5); max-width: 300px;
+}
+#modal-text { font-size: 14px; }
+#modal > small { display: block; font-size: 11px; opacity: .6; margin-top: 5px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+.modal-actions button {
+  flex: 1; padding: 7px 0; font-size: 12px; cursor: pointer;
+  color: #dfe9f2; background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.16); border-radius: 8px;
+}
+.modal-actions button:hover { background: rgba(255,255,255,.15); }
+#modal-ok { background: #c96f3b; border-color: transparent; }
+#modal-ok:hover { background: #d97f49; }

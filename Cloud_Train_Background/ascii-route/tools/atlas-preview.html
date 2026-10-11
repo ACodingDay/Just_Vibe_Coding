@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>ASCII 字形图集预览 — P2 校验</title>
+<style>
+  body { background:#0d1117; color:#dfe9f2; font:13px/1.5 ui-monospace, Consolas, monospace; padding:24px; }
+  h1 { font-size:15px; margin:0 0 4px; }
+  p.dim { opacity:.72; margin:0 0 16px; }
+  #atlas { image-rendering: pixelated; background:#000; border:1px solid #30363d; }
+  .row { display:flex; align-items:center; gap:8px; margin:2px 0; }
+  .bar { height:10px; background:#58a6ff; }
+  .verdict { margin-top:12px; font-weight:600; }
+  .pass { color:#3fb950; } .fail { color:#f85149; }
+  label { opacity:.8; margin-right:12px; }
+  input { width:6ch; background:#161b22; color:inherit; border:1px solid #30363d; }
+  button { background:#21262d; color:inherit; border:1px solid #30363d; }
+</style>
+</head>
+<body>
+<h1>ASCII 字形图集预览（P2 校验）</h1>
+<p class="dim">上排图集 = R8 覆盖度（白=有墨，1px 空白为 tile 间隔）；下表为实测覆盖度，须随级别单调不减。字号按实测 advance 充满格宽。</p>
+<canvas id="atlas"></canvas>
+<div style="margin:8px 0 12px">
+  <label>glyphW <input id="gw" type="number" value="16" min="4" max="64"></label>
+  <label>glyphH <input id="gh" type="number" value="32" min="8" max="128"></label>
+  <label>放大倍数 <input id="zoom" type="number" value="6" min="1" max="12"></label>
+  <button id="rebuild">重建</button>
+</div>
+<div id="bars"></div>
+<div id="verdict" class="verdict"></div>
+<script src="../js/ascii-atlas.js"></script>
+<script>
+'use strict';
+function render() {
+  const gw = Math.max(4, +document.getElementById('gw').value || 16);
+  const gh = Math.max(8, +document.getElementById('gh').value || 32);
+  const zoom = Math.max(1, +document.getElementById('zoom').value || 6);
+  const atlas = buildAsciiAtlas({ glyphW: gw, glyphH: gh });
+  const cv = document.getElementById('atlas');
+  cv.width = atlas.width * zoom; cv.height = atlas.height * zoom;
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(atlas.canvas, 0, 0, cv.width, cv.height);
+  const bars = document.getElementById('bars');
+  bars.innerHTML = '';
+  atlas.coverage.forEach((c, i) => {
+    const row = document.createElement('div'); row.className = 'row';
+    const ch = atlas.ramp[i] === ' ' ? '␠' : atlas.ramp[i];
+    row.innerHTML = '<span style="width:3ch">' + ch + '</span>' +
+      '<span class="bar" style="width:' + Math.max(1, Math.round(c * 400)) + 'px"></span>' +
+      '<span>' + (c * 100).toFixed(1) + '%</span>';
+    bars.appendChild(row);
+  });
+  const bad = checkRampMonotonic(atlas.coverage);
+  const v = document.getElementById('verdict');
+  if (bad.length) {
+    v.className = 'verdict fail';
+    v.textContent = '单调性 FAIL：' + bad.map(p =>
+      '"' + atlas.ramp[p[0]] + '"(' + (atlas.coverage[p[0]] * 100).toFixed(1) + '%) → "' +
+      atlas.ramp[p[1]] + '"(' + (atlas.coverage[p[1]] * 100).toFixed(1) + '%)').join('；');
+  } else {
+    v.className = 'verdict pass';
+    v.textContent = '单调性 PASS（' + atlas.levels + ' 级，图集 ' + atlas.width + '×' + atlas.height +
+      ' px，R8 数据 ' + atlas.data.length + ' B，pad=' + atlas.pad + '）';
+  }
+}
+document.getElementById('rebuild').addEventListener('click', render);
+render();
+</script>
+</body>
+</html>
