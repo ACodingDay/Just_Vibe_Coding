@@ -163,6 +163,9 @@ void main(){
 | P3 | 字形放大 pass 替换 SHADER_IMAGE（`SHADER_ASCII_IMAGE`：定位格子 → 场景网格 FBO 取格中心 → 先调色后选字 → 图集取字形 → 字形×颜色；暗角/开场揭示留在显示域逐像素；新增 `glyphGain` 按最密字形实测覆盖度归一亮度，`min(覆盖度×gain,1)` 截断保色相）；图集纹理以 R8 上传（单元 3 常驻），SHADER_IMAGE 保留未删供 A/B 回退 | ✅ 完成（已验收） |
 | P4 | 面板控制（ASCII 专属，经 config.js 的 `CLOUD_TRAIN_GLOBAL_SELECTS` 下拉表 + panel.js 下拉行构建）：**格子尺寸** 4–24 CSS px 滑杆（联动网格重算 + 图集按显示域物理像素重建）；**字符梯度** 标准16/经典10/极简5 预设（三档均实测单调）；**颜色模式** 彩色/磷屏绿（`uMode` uniform，灰度单色不单列——饱和度滑杆拉 0 即白墨）；**帧率上限** 30（默认）/60/120/不限（跳帧在 draw 入口实现，时间只在真实绘制帧推进）；页头读出追加**实测绘制 fps**（`hooks.onFrame` 1 秒窗口）。**独立存储键** `cloud-train-saved-settings:ascii:v1`（与主版本互不读写，重置只清自己的档） | ✅ 完成（已验收） |
 | P5 | 主题调优（字形输出端，场景 shader 保持与主目录逐字节一致——主版本大海主题后续进化可直接拷贝同步）：**字级伽马**滑杆 0.4–2.5（亮度→字符密度分布曲线，直击亮部字级分布调优点）；**拜耳 4×4 有序抖动**开关（字级边界空间 stipple，天空/光晕渐变从色带变抖动过渡；纯空间图案无时域闪烁，默认开）。灰度单色由饱和度滑杆覆盖，不另设模式 | ✅ 完成（已验收） |
+| P6 | `<ascii-art>` 自定义元素（`js/element.js`）：借鉴 ascii.rest `src/ascii.ts` 的**封装架构**（单标签、属性驱动、生命周期自洽），**保留 GPU 渲染核心**不改渲染路径。属性 `theme`/`piece`、`fps`、`cell`、`color`/`mono`、`label`、`options`(JSON)；connected/disconnected/attributeChanged + 微任务合批；每实例独立 settings（经 config.js `normalizeSettings` 校验）；暴露 `el.settings`/`reboot()`/`wake()`/`measuredFps` 与 `ascii-stats`/`ascii-fps`/`ascii-intro-done` 事件；无 WebGL2 时降级为元素内可读文本（不抛全局，多实例互不牵连） | ✅ 完成（已验收） |
+| P7 | 渲染器行为对齐 ascii.rest `mount.ts`：`IntersectionObserver` **离屏停绘**（画布滚出视口即停 rAF，滚回续帧；`request()`/看门狗统一经 `onscreen` 门控）。壁纸常驻场景恒可见、行为不变；封装成可嵌入组件后离屏实例省电 | ✅ 完成（已验收） |
+| P8 | 嵌入演示页 `embed.html`：三个独立 `<ascii-art>` 实例（默认云海 / 大海磷屏绿大格 / `options` JSON 驱动 + 交互改属性），各自独立设置、独立离屏停绘、独立帧率上限，验证组件可嵌入性（一行标签放多幅） | ✅ 完成（已验收） |
 
 运行方式：浏览器直接打开 `ascii-route/index.html`（与主版本同构，无依赖、无需联网）。
 
@@ -175,3 +178,36 @@ P3 验收记录（2026-10-11，同环境）：字形 pass 上线后 8×16 格内
 P4 验收记录（2026-10-11，同环境）：三档梯度预设实测单调（classic/standard/minimal bad=0）；格子尺寸 16 → 网格 80×23、字形按 16×32 物理像素重建（期间修一 bug：updatePixelSize 仍用常量格宽，未接 settings.asciiCell）；帧率上限三档实测绘制帧率精确命中（30→30、不限→240、60→60，页头读出可见；注意 rAF 计数不随上限变化——跳帧在 draw 入口，统计须用绘制帧回调）；磷屏绿/极简梯度/彩色模式截图确认；存档写入 `:ascii:v1` 键、主版本 v2 键保持 null、重载恢复磷屏绿+格子16、一键重置回出厂并清档。**遗留说明**：fpsCap/asciiRamp/asciiColor 以字符串存档（normalizeSettings 校验取值须在选项表内）；格子尺寸滑杆改变时图集在 reset 中同步重建（change 触发，拖动过程不重建，无性能毛刺）。
 
 P5 验收记录（2026-10-11，同环境）：字级伽马两端对比显著——0.6 全画面细密织毯感、暗部字形浮现；1.6 高对比海报感、暗部沉入黑底而云形更突出（默认保持 1.0 中性，风格交给用户）；拜耳抖动在天空/云层字级边界产生 stipple 过渡（开关对比截图确认），纯空间图案、无时域闪烁，与反馈拖影无冲突；大海主题成品（抖动+伽马1.0+30fps）青蓝字海/白色字符云团/列车带/浪花排全部成立、无报错。P1 遗留的「暖色扩散」在字形模式下已不成问题。**至此 P1–P5 全部完成**。
+
+---
+
+## 8. 组件化架构（P6–P8：借 ascii.rest 封装，保留 GPU 渲染）
+
+> 决策（2026-10-17）：**借架构、保留 GPU**。ascii.rest 的 CPU 渲染路径（`<pre>` 文本 / canvas2D 图集差分）对 Cloud Train 这种连续全屏重型 GLSL 场景是降级（见 §2.3），但其**封装架构**值得整套搬来：把一整幅动画封成单标签、属性驱动、生命周期自洽的可嵌入组件。渲染核心（`renderer.js`/`shader-source.js`/`themes/`）零改动复用。
+
+### 8.1 与 ascii.rest 的对应关系
+
+| ascii.rest | 本项目（`js/element.js`） |
+|---|---|
+| `<ascii-art piece="donut">` | `<ascii-art theme="clouds">`（piece 作 theme 别名保留） |
+| `options='{"text":"hi"}'` | `options='{"speed":.8,"asciiCell":12}'`（JSON，经 `normalizeSettings` 校验） |
+| `fps` / `label` / `mono` | `fps`（帧率上限）/ `label`（读屏）/ `mono`（→磷屏绿） |
+| connected/disconnected/attributeChanged + 微任务合批 | 同款（`soon()`） |
+| 无 palette 时降级 `<pre>` 文本 | 无 WebGL2 时降级为元素内可读文本（不抛全局） |
+| IntersectionObserver 离屏停绘 | 同款（P7，落在 `renderer.js`，index/embed 共用） |
+
+### 8.2 用法
+
+```html
+<ascii-art theme="ocean" cell="12" fps="30" color="phosphor" label="字符画大海"></ascii-art>
+<ascii-art options='{"theme":"clouds","speed":1.2,"asciiGamma":1.4}'></ascii-art>
+```
+
+元素填满自身盒子，宿主用 CSS 给尺寸（如 `height:60vh`）。JS 接口：`el.settings`（改字段后 `el.wake()` 生效）、`el.reboot()`（切主题等需重编译 program）、`el.measuredFps`；事件 `ascii-stats`/`ascii-fps`/`ascii-intro-done`。
+
+### 8.3 两个入口的关系
+
+- `index.html` — 单页应用 Demo：完整设置面板 + 取色器 + 存档，驱动单一画布（原有形态，未改）。
+- `embed.html` — 组件嵌入 Demo（P8）：多幅 `<ascii-art>` 并存，纯属性驱动，验证可嵌入性与离屏停绘。
+- 二者共用同一套渲染核心与主题，互不影响。后续若把 `index.html` 的面板改为驱动 `<ascii-art>` 实例（替代全局 `settings`/`boot`/`wakeRef`），即为 P10，属更侵入的一步，待确认后再做。
+

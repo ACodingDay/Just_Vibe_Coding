@@ -96,3 +96,50 @@
 - 云海主题迁移后与迁移前渲染产物逐字节一致（verify 脚本通过）。
 - 存档 v1 → v2 迁移不丢用户已保存的个性化设置。
 - file:// 双击打开仍然可用（无构建步骤、无 ES modules）。
+
+## 八、性能优化计划（2026-10-25 对抗性审查）
+
+> 两条渲染路线（根目录平滑版 / ascii-route 字符版）分开审查；纹理采样成本按
+> noise()=4 次、fbm(x,8)=32 次折算。原则：**精确优化优先**（逐像素渲染结果不变），
+> 有画质代价的项显式标注为取舍；「不做」清单同样记录，避免伪优化回潮。
+
+### 8.1 原版路线（根目录 js/）
+
+| 级别 | 项 | 位置 | 类型 | 状态 |
+|---|---|---|---|---|
+| P1 | 帧率上限 fpsCap：draw 入口跳帧（时间只在真实绘制帧推进），默认 30（壁纸推荐），可选 60/120/不限；页头加实测 fps 读出 | renderer.js / config.js / panel.js / main.js / index.html | 行为（7×24 常驻负载的最大功耗杠杆） | ✅ 2026-10-25 |
+| P1 | 烟雾 fbm2(uv2,8) 挪进 `uv.x < 0.49` 分支：h 仅冒烟块消费，右半屏每像素省 32 次采样，结果逐位不变 | GLSL_SUBJECT_TRAIN 冒烟段（经 renderer boot 级 replace，见 8.3） | 精确 | ✅ 2026-10-25 |
+| P2 | 大海 cloudMask 轮廓扰动 fbm 包络早退：扰动幅度有界 ±0.395·r·uCloudNoise，`d > r*(1+0.395*uCloudNoise)+feather` 时盘掩码恒 0，每盘 2 段 fbm（20 次采样）可跳过。现状：天空云带 ≈1800 次/像素（3 排×云体+银边×3 朵×5 盘）、海面像素云影再 +600——大海实际成本 ≈ 云海的 4–5 倍，与直觉相反 | ocean.js cloudMask / cloudRowHalo / seaShadowField | 精确 | 未做 |
+| P2 | g_shadow（海面云影）只被水面像素消费，计算门 uv.y≤0.34 收紧到海排最高水面（≈0.316@uWave=2） | ocean.js background | 精确 | 未做 |
+| P2 | 云海 12 排云垂直预门控：每排都有 layer(0.,…)，故 `uv.y > midlevel + 0.5·disp·amplitude` 时整排必不命中可跳过；现状天空像素跑满 12×32=384 次采样（成本倒挂：屏幕下部云海反而便宜）。前景 c13/c14 同理。大海海排已有同款先例 | clouds.js background / foreground | 精确 | 未做 |
+| P3 | getContext 加 `powerPreference:'low-power'`（双显卡笔记本壁纸落核显）；可选 failIfMajorPerformanceCaveat 防 SwiftShader 慢帧 | renderer.js | 行为 | 未做 |
+| P3 | 前景 5-tap 时间错位采样减为 2–3 tap（30fps 下 tap 间距 ≈0.004 uv，几乎不可感知） | GLSL_MAIN_HEAD | **取舍**（改画面，做开关不默认） | 未做 |
+| P3 | uFeedback=0 时跳过反馈纹理采样；后处理 intro 死分支清理（b.intro 恒 1） | subject-train.js / renderer.js | 微 | 未做 |
+| — | **不做**：ALU 哈希噪声替换纹理噪声（破坏确定性噪声/观感）、离线烘焙 fbm 纹理（破坏 uDetail 语义与插值连续性）、CPU 侧微优化（每帧 CPU 仅 uniform 推送，uniformCache/bindTexture 缓存已到位） | | | |
+
+### 8.2 ascii-route
+
+| 级别 | 项 | 位置 | 类型 | 状态 |
+|---|---|---|---|---|
+| P1 | 图集重建 key 纳入 glyphW：现仅 cell+ramp，dpr 变化（拖屏/浏览器缩放）时 rebuildAtlas(false) 跳过，字形停留旧物理尺寸发虚 | renderer.js rebuildAtlas | 正确性 bug（性能路径审出） | 未做 |
+| P1 | 场景热点与原版同步：两版共享同一批拼块，fbm2 门控经两版 renderer 同一 replace 落地 | 两版 renderer.js | 精确 | ✅ 2026-10-25（fbm2） |
+| P2 | 格域免许可简化：格即低通滤波器，8-octave fbm 第 6–8 层与 5-tap 间距均为亚格尺度，格域采样下 detail 8→6、5-tap→2 不可见（场景成本再省 ~37%）。**仅改 ascii 版拼块**，届时 ascii 版退出与上游逐字节对齐并在本行注明 | themes/*（仅 ascii 版） | 风格内合法 | 未做 |
+| P2 | `<ascii-art>` 属性变更细分：fps/color/mono/paused/intro/cell 只改 settings + wake()（cell 另触发 rebuildAtlas），仅 theme 需要 reboot 重编译——避免宿主动态驱动属性时 churn GL context（浏览器 ~16 个活跃上限，旧 context 异步丢失有瞬时内存峰值） | element.js | 架构 | 未做 |
+| P3 | 字形 pass 的格级常量（bayer4(cell)/字级 pow/hue 三角）逐像素重算：当前 ~15 ALU + 2 fetch 无感；冲 8K/240Hz 时再下沉格域 | shader-source.js | 微 | 未做 |
+| 记录 | fpsCap 30 档在 144Hz 屏实际 ≈28.8fps（阈值 31.3ms vs 帧间隔 6.94ms×5）——可接受；要精确改「下次允许时间戳」调度 | renderer.js draw | 记录 | 不改 |
+
+### 8.3 保真约束与实施方式
+
+- verify-split.js 把 buildFragment('clouds') 产物与上游 mdb 原版**逐字节**比对，SHADER_ORIGINAL 同——
+  因此一切作用于共享拼块的精确优化都以 **renderer.js boot 级 `.replace()`** 实施（与既有 5-tap
+  时间压缩同机制，发生在校验范围之外），拼块文件保持与上游一致。
+- 换行注意：拼块文件为 CRLF，多行 replace 须用 `\r?\n` 正则；替换后加 includes 断言，拼块演化
+  导致失配时 console.warn（仅回退为未优化，不影响正确性）。
+- 验收：verify-split 全绿（新增 fpsCap 剔除项后）+ 浏览器实测（两版入口页无报错、页头 fps 读出
+  生效）；精确 shader 优化以任意参数组合下截图逐位一致为标准。
+
+### 8.4 进度
+
+> 2026-10-25：原版 P1 两项落地——fpsCap（默认 30，旧存档经 normalizeSettings 自动补默认值）
+> 与 fbm2 冒烟分支门控（boot 级 replace，两版渲染器同步实施），页头新增实测绘制 fps 读出；
+> verify-split.js 的 stripAdded 增加 fpsCap。P2 起按 8.1 / 8.2 表推进。

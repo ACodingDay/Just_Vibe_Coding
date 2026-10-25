@@ -24,7 +24,10 @@ function startCloudTrain(canvas, state, wakeRef, hooks) {
   if (!gl) throw new Error('需要 WebGL 2 支持（WebGL 2 is required）');
   const programs = [], textures = [], buffers = [], fbos = [];
   // w/h = 画布显示尺寸；gw/gh = 字符格网格尺寸（场景 shader 真正运行的地方）
-  let raf = 0, last = 0, time = 0, w = 0, h = 0, gw = 0, gh = 0, read = 0, history = false, dead = false, watchdog = 0;
+  // onscreen：借鉴 ascii.rest mount.ts 的 IntersectionObserver 行为——画布滚出
+  // 视口即停绘（壁纸常驻场景几乎恒为 true，但封装成可嵌入组件后离屏停绘能省电）；
+  // io 在函数作用域声明，便于 clean() 统一断开
+  let raf = 0, last = 0, time = 0, w = 0, h = 0, gw = 0, gh = 0, read = 0, history = false, dead = false, watchdog = 0, onscreen = true, io = null;
   let introProgress = state.current.paused ? 1 : 0;
   function program(src) {
     const p = gl.createProgram(); programs.push(p);
@@ -47,13 +50,22 @@ function startCloudTrain(canvas, state, wakeRef, hooks) {
   }
   function clean() {
     dead = true; cancelAnimationFrame(raf); clearInterval(watchdog);
+    if (io) io.disconnect();
     programs.forEach(p => gl.deleteProgram(p)); textures.forEach(t => gl.deleteTexture(t));
     buffers.forEach(b => gl.deleteBuffer(b)); fbos.forEach(f => gl.deleteFramebuffer(f));
   }
   try {
     // 与源码一致：前景保留五次采样，但把时间展开压缩为三分之一
     // shader 按当前主题构建（boot 时 settings.theme 已定），该替换作用于共享 mainHead
-    const scene = program(buildFragment(state.current.theme).replace('t+4.*float(i)/float(n)/60.', 't+(4./3.)*float(i)/float(n)/60.'));
+    let frag = buildFragment(state.current.theme)
+      .replace('t+4.*float(i)/float(n)/60.', 't+(4./3.)*float(i)/float(n)/60.');
+    // 性能（精确变换，渲染结果不变）：烟雾 h=fbm2(uv2,8) 只被 uv.x<0.49 分支消费，
+    // 挪入分支后右半屏每像素省 32 次纹理采样。与主版本同一 boot 级替换（拼块保持
+    // 与上游 mdb 原版逐字节一致，在 verify-split.js 校验范围之外）；失配仅回退为未优化
+    frag = frag.replace(/h = fbm2\(uv2, 8\) - 0\.55;\r?\n[ \t]*\r?\n[ \t]*if\(uv\.x < 0\.49\)\{/,
+      'if(uv.x < 0.49){\n        h = fbm2(uv2, 8) - 0.55;');
+    if (!frag.includes('if(uv.x < 0.49){\n        h = fbm2(uv2, 8) - 0.55;')) console.warn('cloud-train: 冒烟分支门控替换失配（拼块文本变了？）');
+    const scene = program(frag);
     // P3：输出端从线性放大（SHADER_IMAGE，保留未删）换成字形放大 pass
     const post = program(SHADER_ASCII_IMAGE);
     const locations = (p, names) => Object.fromEntries(names.map(k => [k, gl.getUniformLocation(p, k)]));
@@ -88,7 +100,7 @@ function startCloudTrain(canvas, state, wakeRef, hooks) {
     // 系统开启「减少动态效果」时冻结动画（无障碍默认行为）；
     // 用户勾选「忽略系统减少动态效果」后可强制播放
     const rmFrozen = () => media.matches && !state.current.ignoreReducedMotion;
-    function request() { if (!dead && !raf && !document.hidden) raf = requestAnimationFrame(draw); }
+    function request() { if (!dead && !raf && !document.hidden && onscreen) raf = requestAnimationFrame(draw); }
     const uniformCache = new Map();
     function scalar(location, value) {
       if (location && uniformCache.get(location) !== value) { gl.uniform1f(location, value); uniformCache.set(location, value); }
@@ -238,6 +250,16 @@ function startCloudTrain(canvas, state, wakeRef, hooks) {
       updatePixelSize(); reset();
     });
     resize.observe(el);
+    // 离屏停绘（借鉴 ascii.rest mount.ts）：滚出视口 → onscreen=false，request()
+    // 不再续帧；滚回视口 → 清零 last（避免帧率上限逻辑按陈旧时间戳跳帧）并立即续帧。
+    // 时间推进本就被 min(dt,.05) 夹住，重新可见不会跳变
+    if (typeof IntersectionObserver === 'function') {
+      io = new IntersectionObserver(entries => {
+        onscreen = entries[entries.length - 1].isIntersecting;
+        if (onscreen) { last = 0; request(); }
+      });
+      io.observe(el);
+    }
     document.addEventListener('visibilitychange', reset);
     media.addEventListener('change', reset);
     request();

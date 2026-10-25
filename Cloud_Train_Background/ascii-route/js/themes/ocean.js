@@ -80,14 +80,15 @@ float cloudMask(vec2 uv, float cx, float baseY, float s, float seed, float feath
     for (int j = 0; j < 5; j++){
         float fj = float(j);
         float fr = fj / 4.0;
-        float r = s * (0.040 + 0.050 * sin(3.14159 * fr) + (cloudHash(seed + fj * 11.3) - 0.5) * 0.020);
+        float r = s * (0.040 + 0.050 * sin(3.14159 * fr) + (cloudHash(seed + fj * 11.3) - 0.5) * 0.020 * uCloudNoise);
         vec2 c = vec2(cx + (fr - 0.5) * s * 0.36,
                       baseY + r * (0.55 + 0.45 * cloudHash(seed + fj * 5.1)));
         vec2 dvec = (uv - c) * vec2(1.0, 1.15);
         float d = length(dvec);
-        // 扰动幅度与盘径成正比：大盘轮廓摆动大、小盘碎边细，噪声场按云心+种子错相
-        float warp = (fbm(uv * 10.0 + c * 7.0 + seed, 3) - 0.5) * 0.55 * r
-                   + (fbm(uv * 30.0 + c * 17.0 - seed, 2) - 0.5) * 0.24 * r;
+        // 扰动幅度与盘径成正比：大盘轮廓摆动大、小盘碎边细，噪声场按云心+种子错相；
+        // 幅度整体乘 uCloudNoise（面板「云朵不规则度」）：0=规整圆盘，越大轮廓越扭曲不规则
+        float warp = ((fbm(uv * 10.0 + c * 7.0 + seed, 3) - 0.5) * 0.55
+                   + (fbm(uv * 30.0 + c * 17.0 - seed, 2) - 0.5) * 0.24) * r * uCloudNoise;
         m = max(m, 1.0 - smoothstep(r - feather, r + feather, d + warp));
     }
     return m * step(baseY - 0.001, uv.y);
@@ -102,7 +103,10 @@ vec4 cloudPlacement(float t, float w, float dist, float baseY, float s, float se
     float h3 = cloudHash(seed0 + fj * 17.3);
     float cx = fract(fj * 0.41 + h1 * 0.17 - t / (dist * 1.5)) * w - 0.4;
     float by = baseY + (h2 - 0.5) * 0.025 + 0.006 * sin(t * (0.10 + 0.04 * h3) + h1 * 6.2831);
-    float sv = s * (0.8 + 0.45 * h2) * (0.92 + 0.16 * h3);
+    // 个体缩放：把原固定系数的离散度改为围绕 1 的偏差 × uCloudNoise——
+    // uCloudNoise=1 时与旧式逐字节等价（出厂观感不变），调大则各云大小差异更明显（大小不一）
+    float sv = s * (1.0 + (0.8 + 0.45 * h2 - 1.0) * uCloudNoise)
+             * (1.0 + (0.92 + 0.16 * h3 - 1.0) * uCloudNoise);
     return vec4(cx, by, sv, seed0 + fj * 13.7 + 5.3 * h3);
 }
 
@@ -338,23 +342,25 @@ const THEME_OCEAN = {
   title: '海上列车 · Sea Train',
   scene: GLSL_OCEAN_SCENE,
   // 场景 shader 使用的 uniform 清单（renderer 据此绑定）
-  sceneUniforms: ['iResolution', 'iTime', 'iChannel0', 'iChannel1', 'uFeedback', 'zoom', 'offset', 'uWave', 'uFoam', 'uGulls', 'uSunX', 'uSunY', 'intro', 'introFeather'],
+  sceneUniforms: ['iResolution', 'iTime', 'iChannel0', 'iChannel1', 'uFeedback', 'zoom', 'offset', 'uWave', 'uFoam', 'uGulls', 'uSunX', 'uSunY', 'uCloudNoise', 'intro', 'introFeather'],
   // 由 settings 逐帧驱动的 uniform：[uniform 名, settings 键名]（renderer 据此推送）
-  paramUniforms: [['zoom', 'zoom'], ['offset', 'offset'], ['uWave', 'wave'], ['uFoam', 'foam'], ['uGulls', 'gulls'], ['uSunX', 'sunX'], ['uSunY', 'sunY']],
+  paramUniforms: [['zoom', 'zoom'], ['offset', 'offset'], ['uWave', 'wave'], ['uFoam', 'foam'], ['uGulls', 'gulls'], ['uSunX', 'sunX'], ['uSunY', 'sunY'], ['uCloudNoise', 'cloudNoise']],
   // 大海专属滑杆参数表 [键名, 标签, min, max, step]
   // （与云海刻意差异化：云海调噪声形态，大海调海面状态与太阳——太阳高度/方位为大海专属，
-  //   全局「垂直位置」只平移相机，不再被误当作太阳调节）
-  controls: [["wave", "浪高", 0, 2, .01], ["foam", "浪花", 0, 2, .01], ["gulls", "海鸥数量", 0, 6, 1], ["sunY", "太阳高度", .34, .92, .01], ["sunX", "太阳方位", .08, .92, .01]],
+  //   全局「垂直位置」只平移相机，不再被误当作太阳调节；cloudNoise 控制卡通云的轮廓
+  //   噪声扭曲与个体大小差异：1=旧固定系数的规整观感，出厂取 1.4 让云朵更不规则、大小更
+  //   不一（用户反馈原云朵千篇一律），>2 开始碎成絮状，滑杆上限 2.5 供风格探索）
+  controls: [["cloudNoise", "云朵不规则度（噪声）", 0, 2.5, .01], ["wave", "浪高", 0, 2, .01], ["foam", "浪花", 0, 2, .01], ["gulls", "海鸥数量", 0, 6, 1], ["sunY", "太阳高度", .34, .92, .01], ["sunX", "太阳方位", .08, .92, .01]],
   // 染色 uniform 清单（键名与 settings 中的颜色设置一一对应；列车/烟雾与云海共享同一主体）
   tintUniforms: ['oceanSkyTint', 'seaTint', 'foamTint', 'smokeTint', 'trainTint'],
   // 染色面板行 [键名, 标签]
   tints: [["oceanSkyTint", "天空染色"], ["seaTint", "海水染色"], ["foamTint", "浪花染色"], ["smokeTint", "烟雾染色"], ["trainTint", "列车染色"]],
   // 主题专属参数出厂值（Dave 式青蓝调色板；太阳出厂位与原写死位置一致：右上天空）
-  defaults: { wave: 1, foam: 1, gulls: 3, sunX: .72, sunY: .62, oceanSkyTint: "#5fb9e6", seaTint: "#1899b4", foamTint: "#ffffff", smokeTint: "#ffffff", trainTint: "#7a3033" },
+  defaults: { wave: 1, foam: 1, gulls: 3, sunX: .72, sunY: .62, cloudNoise: 1.4, oceanSkyTint: "#5fb9e6", seaTint: "#1899b4", foamTint: "#ffffff", smokeTint: "#ffffff", trainTint: "#7a3033" },
   // 大海专属组装配方：拼块 → 直选色染色 → 开场分层揭示 → 注入动态 uniform 与 main 入口
   assemblyFn(parts) {
     const source = parts.helpers + parts.scene + parts.mainHead + parts.subject + parts.mainTail;
-    return '#version 300 es\nprecision highp float;\nuniform vec3 iResolution;uniform float iTime,uFeedback,zoom,offset,uWave,uFoam,uGulls,uSunX,uSunY;uniform sampler2D iChannel0,iChannel1;out vec4 result;\n'
+    return '#version 300 es\nprecision highp float;\nuniform vec3 iResolution;uniform float iTime,uFeedback,zoom,offset,uWave,uFoam,uGulls,uSunX,uSunY,uCloudNoise;uniform sampler2D iChannel0,iChannel1;out vec4 result;\n'
       + oceanOpeningSource(oceanColorizeSource(source))
         .replace('texture(iChannel1, uv).rgb, 0.3', 'texture(iChannel1, uv).rgb, uFeedback')
         .replace('vec2 uv = fragCoord/iResolution.y;',

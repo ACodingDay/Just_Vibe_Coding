@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>云间列车 · &lt;ascii-art&gt; 组件嵌入演示（借鉴 ascii.rest 架构）</title>
+<!--
+  embed.html — <ascii-art> 自定义元素的嵌入演示页（P8）。
+  本页证明「借鉴 ascii.rest 架构、保留 GPU 渲染核心」的成果：Cloud Train 现在
+  是一个单标签、属性驱动、生命周期自洽的可嵌入组件，一行标签即可放多幅实例，
+  各自独立设置、独立离屏停绘。渲染核心（renderer.js / shader-source.js / themes）
+  与 index.html 完全共用，未改动渲染路径。
+
+  与 index.html（单页应用 + 设置面板）的关系：index.html 是完整可交互壁纸 Demo，
+  本页是「组件化嵌入」Demo，两者并存、互不影响。
+
+  加载顺序：主题拼块/描述符/注册表 → config → shader 源码 → 组装 → 图集 → 渲染器 → 元素。
+  （element.js 依赖 normalizeSettings / getCloudTrainTheme / startCloudTrain，须最后加载）
+-->
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #0b0f12; color: #cfd8dc;
+    font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  header { padding: 20px 24px 8px; }
+  header h1 { margin: 0 0 4px; font-size: 18px; color: #e8f0f2; }
+  header p { margin: 0; color: #7f8c94; }
+  main { padding: 16px 24px 40px; display: grid; gap: 24px; }
+  .card { border: 1px solid #1e2a30; border-radius: 8px; overflow: hidden; background: #0e1418; }
+  .card .bar {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    padding: 8px 12px; border-bottom: 1px solid #1e2a30; background: #111a1f;
+    font-size: 12px; color: #9fb0b8;
+  }
+  .card .bar code { color: #6ee7a8; }
+  .card .bar .stat { margin-left: auto; color: #7f8c94; }
+  .stage { height: 78vh; min-height: 420px; }
+  .stage.tall { height: 92vh; }
+  button {
+    font: inherit; color: #cfd8dc; background: #18262c; border: 1px solid #2a3c44;
+    border-radius: 5px; padding: 3px 10px; cursor: pointer;
+  }
+  button:hover { background: #21343b; }
+  footer { padding: 0 24px 40px; color: #6b7a82; font-size: 12px; }
+  footer code { color: #9fb0b8; }
+</style>
+</head>
+<body>
+<header>
+  <h1>&lt;ascii-art&gt; 组件嵌入演示</h1>
+  <p>借鉴 <a style="color:#6ee7a8" href="https://ascii.rest/">ascii.rest</a> 的单标签封装架构 · 渲染核心仍是本目录的 GPU 字形 pass（未改）</p>
+</header>
+
+<main>
+  <!-- 实例 1：默认云海，铺满宽舞台 -->
+  <section class="card">
+    <div class="bar">
+      <span><code>&lt;ascii-art theme="clouds"&gt;</code> 默认云海 · 30fps · cell 8</span>
+      <span class="stat" id="stat-1"></span>
+    </div>
+    <ascii-art id="a1" class="stage tall" theme="clouds" label="云间列车 · 云海"></ascii-art>
+  </section>
+
+  <!-- 实例 2：大海 + 磷屏绿 + 更粗字符格 -->
+  <section class="card">
+    <div class="bar">
+      <span><code>&lt;ascii-art theme="ocean" mono cell="14"&gt;</code> 大海 · 磷屏绿 · 大字符格</span>
+      <span class="stat" id="stat-2"></span>
+    </div>
+    <ascii-art id="a2" class="stage" theme="ocean" mono cell="14" label="字符画大海（磷屏绿）"></ascii-art>
+  </section>
+
+  <!-- 实例 3：options JSON 驱动 + 交互（改属性触发重建，验证生命周期） -->
+  <section class="card">
+    <div class="bar">
+      <span><code>options='{"theme":"ocean","speed":1.2,"asciiGamma":1.5,"asciiCell":6}'</code></span>
+      <button id="toggle-theme">切换 theme（clouds ⇄ ocean）</button>
+      <button id="toggle-pause">暂停/继续</button>
+      <span class="stat" id="stat-3"></span>
+    </div>
+    <ascii-art id="a3" class="stage" label="属性驱动实例"
+      options='{"theme":"ocean","speed":1.2,"asciiGamma":1.5,"asciiCell":6,"fpsCap":"60"}'></ascii-art>
+  </section>
+</main>
+
+<footer>
+  <p>三个实例各自独立：独立设置、独立 <code>IntersectionObserver</code> 离屏停绘（滚出视口即停绘省电）、独立 <code>fps</code> 上限。</p>
+  <p>元素填满自身盒子，宿主用 CSS 给尺寸（本页 <code>.stage{height:42vh}</code>）。JS 接口：<code>el.settings</code> / <code>el.reboot()</code> / <code>el.wake()</code> / 事件 <code>ascii-stats</code>·<code>ascii-fps</code>·<code>ascii-intro-done</code>。</p>
+</footer>
+
+<script src="js/themes/subject-train.js"></script>
+<script src="js/themes/clouds.js"></script>
+<script src="js/themes/ocean.js"></script>
+<script src="js/themes/registry.js"></script>
+<script src="js/config.js"></script>
+<script src="js/shader-source.js"></script>
+<script src="js/shader-build.js"></script>
+<script src="js/ascii-atlas.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/element.js"></script>
+<script>
+  // 把每个实例的网格尺寸 / 实测帧率读到对应卡片的状态栏（演示 ascii-stats / ascii-fps 事件）
+  function wire(id, statId) {
+    const el = document.getElementById(id), stat = document.getElementById(statId);
+    let grid = '', fps = '';
+    const render = () => { stat.textContent = [grid, fps].filter(Boolean).join(' · '); };
+    el.addEventListener('ascii-stats', e => { grid = '网格 ' + e.detail.cols + '×' + e.detail.rows + '（格 ' + e.detail.cellW + '×' + e.detail.cellH + '）'; render(); });
+    el.addEventListener('ascii-fps', e => { fps = e.detail.fps + ' fps'; render(); });
+  }
+  wire('a1', 'stat-1'); wire('a2', 'stat-2'); wire('a3', 'stat-3');
+
+  // 交互：改属性 → 元素的 attributeChangedCallback 合批重建（验证生命周期）
+  const a3 = document.getElementById('a3');
+  document.getElementById('toggle-theme').addEventListener('click', () => {
+    const next = a3.getAttribute('theme') === 'clouds' ? 'ocean' : 'clouds';
+    // theme 属性优先于 options.theme；设置后元素自动重编译 program 并重播开场
+    a3.setAttribute('theme', next);
+  });
+  document.getElementById('toggle-pause').addEventListener('click', () => {
+    // 直接改实例 settings 再 wake()：无需重建，等价旧面板滑杆路径
+    if (!a3.settings) return;
+    a3.settings.paused = !a3.settings.paused;
+    a3.wake();
+  });
+</script>
+</body>
+</html>

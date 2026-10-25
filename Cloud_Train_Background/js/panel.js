@@ -57,6 +57,19 @@ function buildThemeControls() {
       wakeRef.current();
     });
   }
+  // 全局下拉行（帧率上限）：值变更仅 wake，跳帧逻辑在渲染器 draw 入口
+  for (const [key, zh, opts] of CLOUD_TRAIN_GLOBAL_SELECTS) {
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = '<label for="ctl-' + key + '"><span class="zh">' + zh + '</span></label>' +
+      '<select id="ctl-' + key + '" aria-label="' + zh + '">' +
+      opts.map(o => '<option value="' + o[0] + '">' + o[1] + '</option>').join('') + '</select>';
+    controlsBox.appendChild(row);
+    row.querySelector('select').value = settings[key];
+    row.querySelector('select').addEventListener('change', ev => {
+      settings[key] = ev.target.value;
+      wakeRef.current();
+    });
+  }
   for (const [key, zh] of theme.tints) {
     const row = document.createElement('div'); row.className = 'row';
     row.innerHTML = `<label for="ctl-${key}"><span class="zh">${zh}</span><button type="button" class="mini-reset" title="恢复该项默认">重置</button></label>` +
@@ -92,6 +105,7 @@ function syncUI() {
     document.getElementById('ctl-' + key).value = settings[key];
     document.getElementById('out-' + key).textContent = settings[key];
   }
+  for (const [key] of CLOUD_TRAIN_GLOBAL_SELECTS) document.getElementById('ctl-' + key).value = settings[key];
   for (const [key] of getCloudTrainTheme(settings.theme).tints) document.getElementById('ctl-' + key).style.background = settings[key];
   document.getElementById('ctl-introEnabled').checked = settings.introEnabled;
   document.getElementById('ctl-paused').checked = settings.paused;

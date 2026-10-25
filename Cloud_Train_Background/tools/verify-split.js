@@ -35,9 +35,10 @@ const myCtx = Function(mine + ';return {D:CLOUD_TRAIN_DEFAULTS,G:CLOUD_TRAIN_GLO
 
 let fail = 0;
 // 主题化重构新增的设置项，与原版对比时剔除：
-// theme=主题选择、ignoreReducedMotion=拆分版新增、其余为大海主题专属键
+// theme=主题选择、ignoreReducedMotion=拆分版新增、fpsCap=2026-10-25 性能项、
+// sunX/sunY=dc6757f 太阳可调新增（当时漏剔除导致校验静默失败）、其余为大海主题专属键
 const stripAdded = o => {
-  const { ignoreReducedMotion, theme, wave, foam, gulls, oceanSkyTint, seaTint, foamTint, ...rest } = o;
+  const { ignoreReducedMotion, theme, fpsCap, sunX, sunY, wave, foam, gulls, oceanSkyTint, seaTint, foamTint, ...rest } = o;
   return rest;
 };
 // 默认值与控件表按 key 排序后比较：主题化后各主题专属项归入各自描述符，顺序有调整

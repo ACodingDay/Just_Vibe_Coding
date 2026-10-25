@@ -8,11 +8,16 @@
 const canvas = document.getElementById('cloud-train');
 const errBox = document.getElementById('err');
 const panel = document.getElementById('panel');
+// 页头实测绘制帧率（1 秒窗口）：fpsCap 上限滑杆的效果直接可见
+const fpsInfo = document.getElementById('fps-info');
+let frameCount = 0, fpsShown = 0, fpsTickAt = 0;
+function updateFpsInfo() { if (fpsInfo) fpsInfo.textContent = fpsShown ? '实测绘制帧率 ' + fpsShown + ' fps' : ''; }
 const wakeRef = { current: () => {} };
 let cleanup;
 function boot() {
   if (cleanup) { cleanup(); cleanup = undefined; }
   errBox.style.display = 'none';
+  frameCount = 0; fpsShown = 0; fpsTickAt = performance.now(); updateFpsInfo();
   panel.classList.remove('shown'); // 开场动画期间隐藏面板，播完再淡入
   // 页头与标签页标题跟随主题（副标题为原项目署名，保持不变）
   const themeTitle = getCloudTrainTheme(settings.theme).title;
@@ -21,6 +26,11 @@ function boot() {
   try {
     cleanup = startCloudTrain(canvas, { current: settings }, wakeRef, {
       onIntroDone: () => panel.classList.add('shown'),
+      onFrame: () => {
+        frameCount++;
+        const now = performance.now();
+        if (now - fpsTickAt >= 1000) { fpsShown = Math.round(frameCount * 1000 / (now - fpsTickAt)); frameCount = 0; fpsTickAt = now; updateFpsInfo(); }
+      },
     });
   }
   catch (e) {

@@ -41,7 +41,15 @@ function startCloudTrain(canvas, state, wakeRef, hooks) {
   try {
     // 与源码一致：前景保留五次采样，但把时间展开压缩为三分之一
     // shader 按当前主题构建（boot 时 settings.theme 已定），该替换作用于共享 mainHead
-    const scene = program(buildFragment(state.current.theme).replace('t+4.*float(i)/float(n)/60.', 't+(4./3.)*float(i)/float(n)/60.'));
+    let frag = buildFragment(state.current.theme)
+      .replace('t+4.*float(i)/float(n)/60.', 't+(4./3.)*float(i)/float(n)/60.');
+    // 性能（精确变换，渲染结果不变）：烟雾 h=fbm2(uv2,8) 只被 uv.x<0.49 分支消费，
+    // 挪入分支后右半屏每像素省 32 次纹理采样。以 boot 级替换实施，拼块保持与上游
+    // mdb 原版逐字节一致（在 verify-split.js 校验范围之外）；失配仅回退为未优化
+    frag = frag.replace(/h = fbm2\(uv2, 8\) - 0\.55;\r?\n[ \t]*\r?\n[ \t]*if\(uv\.x < 0\.49\)\{/,
+      'if(uv.x < 0.49){\n        h = fbm2(uv2, 8) - 0.55;');
+    if (!frag.includes('if(uv.x < 0.49){\n        h = fbm2(uv2, 8) - 0.55;')) console.warn('cloud-train: 冒烟分支门控替换失配（拼块文本变了？）');
+    const scene = program(frag);
     const post = program(SHADER_IMAGE);
     const locations = (p, names) => Object.fromEntries(names.map(k => [k, gl.getUniformLocation(p, k)]));
     // uniform 清单由当前主题描述符提供，行为与原硬编码列表一致
@@ -102,6 +110,13 @@ function startCloudTrain(canvas, state, wakeRef, hooks) {
     gl.useProgram(post); gl.uniform1i(b.scene, 2);
     function draw(now) {
       raf = 0; const s = state.current;
+      // 帧率上限（fpsCap，0=不限）：跳帧期间时间不推进（last 仅在真实绘制帧更新），
+      // 动画速度与刷新率解耦；暂停/冻结时不续帧，交给底部条件收尾
+      const cap = Number(s.fpsCap) || 0;
+      if (cap && last && !s.paused && !rmFrozen() && now - last < 1000 / cap - 2) {
+        raf = requestAnimationFrame(draw);
+        return;
+      }
       if (!s.introEnabled || rmFrozen()) introProgress = 1;
       else if (!s.paused) introProgress = Math.min(1, introProgress + Math.min((now - (last || now)) / 1000, .05) / s.introDuration);
       if (introProgress >= 1 && hooks.onIntroDone) { const cb = hooks.onIntroDone; hooks.onIntroDone = null; cb(); }
@@ -137,6 +152,7 @@ function startCloudTrain(canvas, state, wakeRef, hooks) {
       scalar(b.saturation, s.saturation); scalar(b.hue, s.hue); scalar(b.temperature, s.temperature);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       read = write; history = true;
+      if (hooks.onFrame) hooks.onFrame();
       if (!s.paused && !rmFrozen() && (s.speed !== 0 || introProgress < 1)) request();
     }
     const reset = () => {

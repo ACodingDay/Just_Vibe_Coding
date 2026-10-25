@@ -9,7 +9,8 @@
 'use strict';
 
 // 全局参数（任何主题都有效）：主题选择 / 速度视角 / 后处理 / 开场 / 播放控制
-const CLOUD_TRAIN_GLOBAL_DEFAULTS = {theme:'clouds',speed:.4,resolution:.75,feedback:.3,vignette:1,zoom:.8,offset:0,exposure:1,saturation:1,hue:0,temperature:0,introEnabled:true,introDuration:3,introFeather:.15,paused:false,ignoreReducedMotion:false};
+// fpsCap 为 2026-10-25 性能项新增（帧率上限，壁纸推荐 30），verify-split.js 与原版对比时剔除
+const CLOUD_TRAIN_GLOBAL_DEFAULTS = {theme:'clouds',speed:.4,resolution:.75,feedback:.3,vignette:1,zoom:.8,offset:0,exposure:1,saturation:1,hue:0,temperature:0,introEnabled:true,introDuration:3,introFeather:.15,paused:false,ignoreReducedMotion:false,fpsCap:'30'};
 const CLOUD_TRAIN_GLOBAL_CONTROLS = [
 ["introDuration","开场时长（秒）",.5,10,.1],
 ["introFeather","开场羽化宽度",.02,.6,.01],
@@ -24,6 +25,10 @@ const CLOUD_TRAIN_GLOBAL_CONTROLS = [
 ["feedback","帧间拖影",0,.85,.01],
 ["vignette","暗角强度",0,1,.01],
 ];
+
+// 全局下拉项（panel.js 按此构建 select 行；值以字符串存档，normalizeSettings 校验枚举）
+const CLOUD_TRAIN_GLOBAL_SELECTS = [
+["fpsCap","帧率上限",[["30","30 fps（壁纸推荐）"],["60","60 fps"],["120","120 fps"],["0","不限"]]]];
 
 // 全部主题的染色项平铺（取色器按 key 查标题用）
 const CLOUD_TRAIN_TINTS = CLOUD_TRAIN_THEMES.flatMap(t => t.tints);
@@ -54,6 +59,10 @@ function normalizeSettings(value) {
   }
   for (const [key] of CLOUD_TRAIN_TINTS) {
     if (typeof value[key] === 'string' && /^#[0-9a-f]{6}$/i.test(value[key])) r[key] = value[key];
+  }
+  // 下拉项：字符串枚举，取值须在选项表内
+  for (const [key, , opts] of CLOUD_TRAIN_GLOBAL_SELECTS) {
+    if (opts.some(o => o[0] === value[key])) r[key] = String(value[key]);
   }
   for (const k of ['introEnabled', 'paused', 'ignoreReducedMotion']) {
     if (typeof value[k] === 'boolean') r[k] = value[k];
